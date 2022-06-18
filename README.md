@@ -1,5 +1,5 @@
-# DowloadPostsReddit
-Código fonte utilizado para realizar dowload dos arquivos (Fotos, Gifs, Videos) anexados aos posts enviados em um subreddit.
+# DownloadPostsReddit
+Código fonte utilizado para realizar download dos arquivos (Fotos, Gifs, Videos) anexados aos posts enviados em um subreddit.
 
 Parte da documentação utilizada: https://www.reddit.com/dev/api/
 
