@@ -19,13 +19,16 @@ Vericar se o projeto funcionou:
   5. Na pasta "reddit_files", terá os arquivos baixados.
 
 Conteúdo do arquivo ".env":
-  1.DEBUG_ERROR
-    1.1 true -> Habilita a apresentação dos erros que ocorrerem durante a execução, no console;
-    1.2 false -> NÂO Habilita a apresentação dos erros que ocorrerem durante a execução, no console.
+  1. DEBUG_ERROR
+  1.1 true -> Habilita a apresentação dos erros que ocorrerem durante a execução, no console;
+  1.2 false -> NÂO Habilita a apresentação dos erros que ocorrerem durante a execução, no console.
+    
   2. REMOVE_OR_COPY_DUPLICATE_ITENS
     2.1 COPY -> Ao executar a rotina 'removeFilesDuplicate', os arquivos duplicados serão movidos para a pasta temporária (PATH_COPY_FILES).
     2.2 REMOVE -> Ao executar a rotina 'removeFilesDuplicate', os arquivos duplicados serão removidos do disco fisíco.
+    
   3. PATH_DOWNLOAD_FILES
     3.1. reddit_files (Valor Padrão) -> Caminho onde os arquivos serão baixados. Não há necessidade de alterar este campo.
+  
   4. PATH_COPY_FILES=
     4.1 reddit_tempfiles (Valor Padrão) -> Caminho onde os arquivos temporários serão movidos. Não há necessidade de alterar este campo.
