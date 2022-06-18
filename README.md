@@ -18,4 +18,3 @@ Vericar se o projeto funcionou:
   4. Dentro da pasta ".database", terá duas pastas "logs" e "reddit";
   5. Na pasta "logs", terá toda a consulta realizada no reddit, caso tenha retornado pelo menos um post.
   6. Na pasta "reddit", terá as configurações da endereço de pesquisa do reddit e o último post recebido.
-  7. 
