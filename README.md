@@ -12,8 +12,8 @@ Executar o projeto:
   1. Executar o comando dentro da pasta raiz do projeto, "node index.js", atualmente o comando irá buscar os posts do Reddit: https://www.reddit.com/r/wallpaper/new.
 
 Vericar se o projeto funcionou:
-  3. Será criado uma pasta ".database" na pasta "js";
-  4. Dentro da pasta ".database", terá outras pastas "logs" e "reddit" e "reddit_files";
-  5. Na pasta "logs", terá toda a consulta realizada no reddit, caso tenha retornado pelo menos um post.
-  6. Na pasta "reddit", terá as configurações da endereço de pesquisa do reddit e o último post recebido.
-  8. Na pasta "reddit_files", terá os arquivos baixados; 
+  1. Será criado uma pasta ".database" na pasta "js";
+  2. Dentro da pasta ".database", terá outras pastas "logs" e "reddit" e "reddit_files";
+  3. Na pasta "logs", terá toda a consulta realizada no reddit, caso tenha retornado pelo menos um post.
+  4. Na pasta "reddit", terá as configurações da endereço de pesquisa do reddit e o último post recebido.
+  5. Na pasta "reddit_files", terá os arquivos baixados; 
