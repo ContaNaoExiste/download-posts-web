@@ -360,7 +360,7 @@ function getHashSumFromFile( path ){
  * Busca o parametro PATH_COPY_FILES, e caso a pasta não exista, entao é criada.
 */
 function getPATH_COPY_FILES(){
-    const directory = __dirname + path.sep + ".." + path.sep + process.env.PATH_COPY_FILES;
+    const directory = __dirname + path.sep + ".database" + path.sep + process.env.PATH_COPY_FILES;
     try { if( ! fs.existsSync(directory)) fs.mkdirSync(directory)} catch (error) { }
     return directory;
 }
@@ -369,7 +369,7 @@ function getPATH_COPY_FILES(){
  * Busca o parametro PATH_DOWNLOAD_FILES, e caso a pasta não exista, entao é criada.
 */
 function getPATH_DOWNLOAD_FILES(){
-    const directory = __dirname + path.sep + ".." + path.sep + process.env.PATH_DOWNLOAD_FILES;
+    const directory = __dirname + path.sep + ".database" + path.sep + process.env.PATH_DOWNLOAD_FILES;
     try { if( ! fs.existsSync(directory)) fs.mkdirSync(directory)} catch (error) { }
     return directory;
 }
