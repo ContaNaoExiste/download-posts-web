@@ -30,5 +30,10 @@ Conteúdo do arquivo ".env":
   3. PATH_DOWNLOAD_FILES
     3.1. reddit_files (Valor Padrão) -> Caminho onde os arquivos serão baixados. Não há necessidade de alterar este campo.
   
-  4. PATH_COPY_FILES=
+  4. PATH_COPY_FILES
     4.1 reddit_tempfiles (Valor Padrão) -> Caminho onde os arquivos temporários serão movidos. Não há necessidade de alterar este campo.
+  
+  5. ACCEPT_FORMAT_FILES
+    5.1  png;jpeg;jpg;gif;mp4 -> Extensões dos arquivos que podem ser baixados.
+  
+  
