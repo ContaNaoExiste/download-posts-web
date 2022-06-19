@@ -28,13 +28,6 @@ function writeFileFromJson ( filePath , json ) {
 
 function extractedURLFromRedditData(data){
     try {
-        if(data.media && data.media.type === "redgifs.com"){
-            return data.media.oembed.thumbnail_url.replace("-mobile.jpg", ".mp4");
-        }
-        
-        if(data.media && data.media.reddit_video){
-            return data.media.reddit_video.fallback_url;
-        }
         
         if( data.url.startsWith("https://www.reddit.com/gallery") ){
             let urls = [];
@@ -53,10 +46,19 @@ function extractedURLFromRedditData(data){
             return urls;
         }
         
+        if(data.media && data.media.type === "redgifs.com"){
+            data.url = data.media.oembed.thumbnail_url.replace("-mobile.jpg", ".mp4");
+        }
+        
+        if(data.media && data.media.reddit_video){
+            data.url = data.media.reddit_video.fallback_url;
+        }
         let url = new URL( data.url);
-        if( getExtension(url.pathname) === 'gifv'){
-            return data.url.replace(".gifv", ".mp4");;
-        }    
+        let extension = getExtension(url.pathname);
+        
+        if( extension === 'gifv'){
+            data.url = data.url.replace(".gifv", ".mp4");
+        }
     } catch (error) {
         if( process.env.DEBUG_ERROR === "true"){
             console.error("extractedURLFromRedditData", error);
@@ -94,14 +96,9 @@ function removeInvalidCharacteresPath( stringToReplace ){
 function getTypeExtensionFile(data){
     
     if(data.mimeType == "video/mp4"){
-       throw new Error("Erro tipo nãp suportado" + ' URL ' + data.subreddit + "\\" + data.fullurl)
-       //return ".mp4"
+       return ".mp4"
     }
     
-    if( data.mimeType == "text/html;" || data.mimeType == "text/html" || data.mimeType == "text/html; charset=utf-8"){
-        throw new Error("Erro tipo nãp suportado" + ' URL ' + data.subreddit + "\\" + data.fullurl)
-    }
-
     if(data.mimeType == "image/jpeg"){
         return ".jpg"
     }
@@ -119,6 +116,9 @@ function getTypeExtensionFile(data){
 
 async function requestDowloadFileFromURL(url, data, name){
     if( ! url) return null;
+    
+    if( process.env.ACCEPT_FORMAT_FILES && !(process.env.ACCEPT_FORMAT_FILES.includes( getExtension( url) ))) return null;
+
     data.fullurl = url;
     request.get(url, function( error, response, body){
 
