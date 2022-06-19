@@ -2,7 +2,7 @@ const { buscarPostsReddit, removeFilesDuplicate } = require("./js/download_posts
 
 function main(params) {
     //removeFilesDuplicate();
-    buscarPostsReddit("hentai");
+    buscarPostsReddit("wallpaper");
 }
 
 main();
