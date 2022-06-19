@@ -100,9 +100,9 @@ function getTypeExtensionFile(data){
     }
     
     if(data.mimeType == "image/jpeg"){
-        return ".jpeg"
+        return ".jpg"
     }
-    
+
     if(data.mimeType == "image/jpg"){
         return ".jpg"
     }
