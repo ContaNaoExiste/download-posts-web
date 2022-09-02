@@ -511,8 +511,6 @@ function removeFilesDuplicate(){
 function buscarLocalDatabaseReddits( filtro ){
     let directory = __dirname + path.sep + path.sep + ".database" + path.sep + "reddit";
     let directory_files = getPATH_DOWNLOAD_FILES();
-    //let directory = `F:\\VisualStudio Workspace\\GoogleDriveUpload\\database\\applets`;
-    //let directory_files = `F:\\VisualStudio Workspace\\GoogleDriveUpload\\files`;
     let applets = [];
     let totais = { subreddits: 0, files: 0};
     let info = { espaco_usado: 0}
