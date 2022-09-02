@@ -27,48 +27,6 @@ function writeFileFromJson ( filePath , json ) {
     }
 }
 
-function extractedURLFromRedditData(data){
-    try {
-        
-        if( data.url.startsWith("https://www.reddit.com/gallery") ){
-            let urls = [];
-            if(data.crosspost_parent_list){
-                data.crosspost_parent_list[0].gallery_data.items.forEach( (item) =>{
-                    urls.push({ url: "https://i.redd.it/" + item.media_id + ".jpg", name: item.media_id})
-                })
-            }
-            
-            if( data.gallery_data){
-                data.gallery_data.items.forEach( (item) =>{
-                    urls.push({ url: "https://i.redd.it/" + item.media_id + ".jpg", name: item.media_id})
-                })  
-            }
-
-            return urls;
-        }
-        
-        if(data.media && data.media.type === "redgifs.com"){
-            data.url = data.media.oembed.thumbnail_url.replace("-mobile.jpg", ".mp4");
-        }
-        
-        if(data.media && data.media.reddit_video){
-            data.url = data.media.reddit_video.fallback_url;
-        }
-        let url = new URL( data.url);
-        let extension = getExtension(url.pathname);
-        
-        if( extension === 'gifv'){
-            data.url = data.url.replace(".gifv", ".mp4");
-        }
-    } catch (error) {
-        if( process.env.DEBUG_ERROR === "true"){
-            console.error("extractedURLFromRedditData", error);
-        }
-    }
-   
-    return data.url;
-}
-
 // you can send full url here
 function getExtension(filename) {
     return filename.split('.').pop();
@@ -119,65 +77,6 @@ function getTypeExtensionFile(data){
     throw new Error("Erro tipo nãp suportado" + " Type " + data.mimeType + ' URL ' + data.subreddit + "\\" + data.fullurl);
 }
 
-async function requestDowloadFileFromURL(url, data, name){
-    if( ! url) return null;
-    
-    if( process.env.ACCEPT_FORMAT_FILES && !(process.env.ACCEPT_FORMAT_FILES.includes( getExtension( url) ))) return null;
-
-    data.fullurl = url;
-    request.get(url, function( error, response, body){
-
-        if ( !error && response.statusCode == 200) {
-            data.mimeType = response.headers["content-type"].trim();
-            try {
-                let directory = getPATH_DOWNLOAD_FILES() + path.sep + data.subreddit;
-                if( ! fs.existsSync(directory)) fs.mkdirSync( directory);
-                
-                var pathFile = directory + path.sep + removeInvalidCharacteresPath( name || data.name) + getTypeExtensionFile(data);
-                if( ! fs.existsSync(pathFile)) fs.writeFileSync(pathFile, Buffer.from(body));
-            } catch (error) {
-                if( process.env.DEBUG_ERROR === "true"){
-                    console.error("extractedURLFromRedditData", error);
-                }
-            }
-        }
-                    
-    });
-}
-
-async function dowloadFileFromURL( data){
-    const url = extractedURLFromRedditData(data)
-    if( url instanceof Array){
-        url.forEach( async ( item ) =>{
-            await requestDowloadFileFromURL( item.url, data, item.name)
-        })
-    }else{
-        await requestDowloadFileFromURL( url, data)
-    }
-}
-
-function getInfoRedditByName( reddit ){
-    try {
-        let directory = __dirname + path.sep + ".database";
-        if( ! fs.existsSync(directory)) fs.mkdirSync(directory);
-        
-        directory += path.sep + "reddit";
-        if( ! fs.existsSync(directory)) fs.mkdirSync(directory);
-
-        var pathFile = directory + path.sep + reddit + ".json";
-        if( ! fs.existsSync(pathFile)){
-            createNewDatabaseReddit(reddit);
-        }
-        return readFileParseJson(pathFile);    
-    } catch (error) {
-        if( process.env.DEBUG_ERROR === "true"){
-            console.log("getInfoRedditByName", error);
-        }
-    }
-    
-    return null;
-}
-
 function saveInfoReddit( reddit, value){
     var pathFile = __dirname + path.sep + ".database" + path.sep + "reddit" + path.sep + reddit + ".json";
     return writeFileFromJson(pathFile, value);
@@ -205,64 +104,6 @@ function saveLogReturnRequest( name, value ){
     }
 }
 
-function generateUrlIfReddit( config, contador_file, contador){
-    let config_if = config;
-    if( config_if ){
-    
-        if( ! config_if.url_params ){ // Configurando os Paramentros padroes da URL
-            config_if.url_params = { "limit" : "100", "before" : "" }
-        }
-
-        let generateUrl = new URL( config_if.url);
-        Object.entries(config_if.url_params).forEach(([key, value]) => {
-            generateUrl.searchParams.set(key, value);
-        });
-
-        return { href: generateUrl.href, contador_file: contador_file || 0, contador: contador || 0};
-    }
-
-    return null;
-}
-const getSortedFiles = async (dir) => {
-    const files = await fs.promises.readdir(dir);
-    return files
-      .map(fileName => ({
-        name: fileName,
-        time: fs.statSync(`${dir}/${fileName}`).mtime.getTime(),
-      }))
-      .sort((a, b) => a.time - b.time)
-      .map(file => file.name);
-};
-
-async function generateNextUrlIfReddit( config , old_url){
-    let config_if = config;
-    if( config_if ){
-        const reddit = config_if.subreddit;
-        var dir = __dirname + path.sep + ".database" + path.sep + "logs" + path.sep + reddit;
-        let files = null;
-        await getSortedFiles( dir ).then( (lista )  =>{
-            files = lista.reverse();
-        });
-
-        if( files ){
-            let arquivo  = files[old_url.contador_file];
-            if( arquivo ){
-                const json = readFileParseJson(dir + path.sep + arquivo);
-                const children = json.data.children[old_url.contador];
-                if( children){
-                    config_if.url_params.before = children.data.name;
-                    old_url.contador ++;
-                }else {
-                    old_url.contador = 0;
-                    old_url.contador_file ++;
-                }
-                return await generateUrlIfReddit( config, old_url.contador_file, old_url.contador);
-            }
-        }
-    }
-    return null;
-}
-
 async function requestURLReddit( url, config, callback){
     if( ! url || ! url.href){
         return false;
@@ -282,34 +123,6 @@ async function requestURLReddit( url, config, callback){
         }
     });
 }
-
-async function downloadFilesByReturnRequest( config, data){
-    if( data.data && data.data.children ){
-        data.data.children.reverse().forEach( (element, i)=>{
-            if( element.data ){
-                if( ! config.url_params){
-                    config.url_params = {};
-                }
-                config.url_params.before = element.data.name;
-                dowloadFileFromDataURL(element.data);
-            }
-        })    
-    }
-    saveInfoReddit( config.subreddit, config);
-}
-
-async function createNewDatabaseReddit( reddit){
-    return saveInfoReddit( reddit, getAppletJsonDefault(reddit));
-}
-
-function getAppletJsonDefault( reddit ){
-    return {
-        "subreddit" : reddit,
-        "url": `https://reddit.com/r/${reddit}/new.json`,
-        "url_params": { "limit" : 100}
-    }
-}
-
 
 /** 
  * Retorna o nome do arquivo
