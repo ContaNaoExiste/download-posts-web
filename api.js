@@ -1,9 +1,10 @@
 const express = require('express');
 const app = express();
+const cors = require('cors')
 const port = 3050;
 const path = require("path");
 const fs = require('fs');
-
+app.use(cors())
 
 app.use(express.json()) // for parsing application/json
 app.use(express.urlencoded({ extended: true })) // for parsing application/x-www-form-urlencoded
@@ -21,7 +22,13 @@ app.get('/subreddit', (req, res) => {
 })
 
 app.get('/subreddits', (req, res) => {
+  console.log("Reddit.buscarLocalDatabaseReddits()");
   res.send( Reddit.buscarLocalDatabaseReddits() )
+})
+
+app.delete('/duplicados', (req, res) => {
+  console.log("Reddit.removeFilesDuplicate()");
+  res.send( Reddit.removeFilesDuplicate() )
 })
 
 app.listen(port, () => {
