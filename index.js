@@ -3,7 +3,7 @@ const Twitter = require("./js/download_posts_twitter");
 
 function main(params) {
     //Reddit.removeFilesDuplicate();
-    Reddit.buscarPostsReddit("wallpaper");
+    Reddit.buscarPostsReddit("Animewallpaper");
     //Twitter.buscarPostsTwitter("from:DekuNaro");
 }
 

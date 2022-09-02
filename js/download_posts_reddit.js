@@ -508,8 +508,48 @@ function removeFilesDuplicate(){
     listFilesRemoveFilesDuplicate( getPATH_DOWNLOAD_FILES(), {});
 }
 
+function buscarLocalDatabaseReddits( filtro ){
+    let directory = __dirname + path.sep + path.sep + ".database" + path.sep + "reddit";
+    let directory_files = getPATH_DOWNLOAD_FILES();
+    let applets = [];
+    let totais = { subreddits: 0, files: 0};
+    let info = { espaco_usado: 0}
+    try {
+      let files = fs.readdirSync( directory);
+      if( files ){
+        if(filtro){
+            files = files.filter( (value)=>{ return value.match( filtro )} );
+        }
+
+        totais.subreddits = files.length;
+        files.forEach(element => {
+            let subreddit = element.split(".json").shift();
+            let files = 0;
+            try {
+                files = fs.readdirSync( directory_files + path.sep + subreddit).length;
+            } catch (error) {}
+            
+            applets.push( {
+                "subreddit" : subreddit,
+                "path"      : element,
+                "files"     : files
+            });
+
+            totais.files += files;
+        });
+      }
+    } catch (error) {
+        console.log( error );
+        applets = [];
+    }
+    
+    applets = applets.sort( (a, b) => { if ( a.files < b.files ) return 1; if ( a.files > b.files ) return -1; return 0;});
+    return {applets: applets, totais: totais, info: info};
+}
+
 module.exports = {
     buscarPostsReddit,
+    buscarLocalDatabaseReddits,
     uploadGoogleDriveByJson,
     removeFilesDuplicate
 }

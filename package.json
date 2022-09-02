@@ -19,6 +19,7 @@
     "delayed-stream": "^1.0.0",
     "dotenv": "^16.0.1",
     "ecc-jsbn": "^0.1.2",
+    "express": "^4.18.1",
     "extend": "^3.0.2",
     "extsprintf": "^1.3.0",
     "fast-deep-equal": "^3.1.3",
@@ -37,7 +38,7 @@
     "json-stringify-safe": "^5.0.1",
     "jsprim": "^1.4.2",
     "mime-db": "^1.52.0",
-  "mime-types": "^2.1.35",
+    "mime-types": "^2.1.35",
     "oauth-sign": "^0.9.0",
     "performance-now": "^2.1.0",
     "psl": "^1.8.0",
@@ -55,6 +56,7 @@
     "verror": "^1.10.0"
   },
   "scripts": {
+    "start": "(node ./pages/home.js) && echo \"Agora vai!\" && (node api.js)",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
