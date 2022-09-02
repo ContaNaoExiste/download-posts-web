@@ -223,7 +223,6 @@ function next_data_children( vetor, config, data, resolve){
             config.url_params.before = element.data.name;
             
             dowloadFileFromDataURL(element.data).then(() =>{
-                console.log(config.subreddit, config, " config.subreddit, config");
                 saveInfoReddit( config.subreddit, config);
                 
                 next_data_children(vetor, config, data, resolve);
