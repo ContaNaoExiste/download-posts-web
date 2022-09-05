@@ -1,7 +1,6 @@
 const fs = require('fs');
 const crypto = require("crypto");
 const path = require("path");
-const { url } = require('inspector');
 const request = require('request').defaults({ encoding: null });
 require('dotenv/config');
 
@@ -553,6 +552,7 @@ function removeFilesDuplicate(){
 function buscarLocalDatabaseReddits( filtro ){
     let directory = __dirname + path.sep + path.sep + ".database" + path.sep + "reddit";
     let directory_files = getPATH_DOWNLOAD_FILES();
+
     let applets = [];
     let totais = { subreddits: 0, files: 0};
     let info = { espaco_usado: 0}
@@ -589,9 +589,17 @@ function buscarLocalDatabaseReddits( filtro ){
     return {applets: applets, totais: totais, info: info};
 }
 
+function buscarTodosPostReddit(){
+    const lista = buscarLocalDatabaseReddits();
+    lista.applets.forEach( item =>{
+        buscarPostsReddit( item.subreddit );
+    })
+}
+
 module.exports = {
     buscarPostsReddit,
     buscarLocalDatabaseReddits,
     uploadGoogleDriveByJson,
-    removeFilesDuplicate
+    removeFilesDuplicate,
+    buscarTodosPostReddit
 }

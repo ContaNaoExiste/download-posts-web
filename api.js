@@ -10,6 +10,7 @@ app.use(express.json()) // for parsing application/json
 app.use(express.urlencoded({ extended: true })) // for parsing application/x-www-form-urlencoded
 
 const Reddit  = require("./js/download_posts_reddit");
+const Jobs = require('./js/schedule');
 
 app.get('/subreddit', (req, res) => {
   console.log(req.query);
@@ -26,12 +27,10 @@ app.get('/subreddits', (req, res) => {
   res.send( Reddit.buscarLocalDatabaseReddits() )
 })
 
+
 app.get('/runall', (req, res) => {
-  const lista = Reddit.buscarLocalDatabaseReddits();
   try {
-    lista.applets.forEach( item =>{
-      Reddit.buscarPostsReddit( item.subreddit);
-    })
+    Reddit.buscarTodosPostReddit();
     res.send(  {"message": "ok"} )
   } catch (error) {
     res.send({ message: "error"})
@@ -42,6 +41,26 @@ app.delete('/duplicados', (req, res) => {
   console.log("Reddit.removeFilesDuplicate()");
   res.send( Reddit.removeFilesDuplicate() )
 })
+
+/**** JOBS ***/
+app.get('/updatejob', (req, res) => {
+  Jobs.startJob(req.query.params, Reddit.buscarTodosPostReddit);
+})
+
+app.get('/stopjob', (req, res) => {
+  Jobs.stopJob();
+})
+
+app.get('/configjob', (req, res) => {
+  try {
+    res.send(  Jobs.getConfigJob() )
+  } catch (error) {
+    res.send({ message: "error"})
+  }
+  
+})
+
+/**** JOBS ***/
 
 app.listen(port, () => {
     console.log(`Example app listening on port ${port}`)

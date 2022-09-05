@@ -61,6 +61,15 @@ function consultarTodos( ){
     fetch("http://localhost:3050/runall")
 }
 
+function updatejob( params){
+    fetch("http://localhost:3050/updatejob?params=" + params)
+}
+
+function cancelJob( ){
+    fetch("http://localhost:3050/stopjob")
+}
+
+
 function updateSubreddits(setData ){
 try {
         React.useEffect(() => {
@@ -73,13 +82,28 @@ try {
         console.log(error);    
     }
 }
+
+function consultarJobConfig(setJobConfig ){
+    try {
+            React.useEffect(() => {
+                fetch("http://localhost:3050/configjob")
+                .then((res) => res.json())
+                .then((data) => setJobConfig(data));
+            }, []);
+            
+        } catch (error) {
+            console.log(error);    
+        }
+    }
 export default function Reddit() {  
     
     const [subreddit, setSubreddit] = React.useState("");
+    const [job_schedule, setJob_schedule] = React.useState("");
     const [data, setData] = React.useState(null);
+    const [jobConfig, setJobConfig] = React.useState(null);
 
     updateSubreddits(setData)
-
+    consultarJobConfig(setJobConfig)
     return (
         <Box component="form" sx={{ '& > :not(style)': { m: 1, width: '100%' }, }} noValidate autoComplete="off" >
             
@@ -106,6 +130,25 @@ export default function Reddit() {
                     </CardActions>
                 </Card>
             </Box>
+
+            <Box component="form" sx={{ '& > :not(style)': { m: 1, width: '25%' }, }} noValidate autoComplete="off" >
+                <Card sx={{ minWidth: 275 }}>
+                    <CardContent>
+                        <Typography sx={{ fontSize: 14 }} color="text.secondary" gutterBottom>
+                            <TextField id="estrutura" label="Estrutura do Job" variant="outlined" onChange={event => { setJob_schedule(event.target.value);}}/>
+                        </Typography>
+                        
+                        <Typography sx={{ fontSize: 14 }} color="text.secondary" gutterBottom>
+                            Estrutura Atual: { ! jobConfig ? '' : jobConfig.rule}
+                        </Typography>
+                    </CardContent>
+                    <CardActions>
+                        <Button size="small" onClick={() => { updatejob( job_schedule );}}>Atualizar Job</Button>
+
+                        <Button size="small" onClick={() => { cancelJob( );}}>Cancelar Job</Button>
+                    </CardActions>
+                </Card>
+            </Box>
             
             <Box component="form" sx={{ '& > :not(style)': { m: 1, width: '100%' }, }} noValidate autoComplete="off" >
                 <Grid container spacing={2}>
@@ -114,7 +157,7 @@ export default function Reddit() {
                         data.applets.map( item => {
                             
                             return (
-                                <Grid item xs={4}>
+                                <Grid item xs={3}>
                                     <Card sx={{ minWidth: 275 }}>
                                         <CardContent>
                                             <Typography sx={{ fontSize: 14 }} color="text.secondary.strong" gutterBottom>
