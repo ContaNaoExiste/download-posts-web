@@ -59,7 +59,9 @@
     "verror": "^1.10.0"
   },
   "scripts": {
-    "start": "(node ./pages/home.js) && echo \"Agora vai!\" && (node api.js)",
+    "start": "(node js/api.js) && echo \"Agora vai!\" && (cd client && npm start)",
+    "api" : "node js/api.js",
+    "web" : "(cd client && npm start)",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

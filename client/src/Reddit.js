@@ -7,47 +7,7 @@ import CardActions from '@mui/material/CardActions';
 import CardContent from '@mui/material/CardContent';
 import Typography from '@mui/material/Typography';
 
-import Paper from '@mui/material/Paper';
 import Grid from '@mui/material/Grid';
-
-import Link from '@mui/material/Link';
-import ImageList from '@mui/material/ImageList';
-import ImageListItem from '@mui/material/ImageListItem';
-
-import { styled } from '@mui/material/styles';
-
-const RedditItem = (
-    <Card sx={{ minWidth: 275 }}>
-        <CardContent>
-            <Typography sx={{ fontSize: 14 }} color="text.secondary" gutterBottom>
-                Reddit: 
-            </Typography>
-            <Typography sx={{ fontSize: 14 }} color="text.secondary" gutterBottom>
-                Quantidade de Arquivos: 
-            </Typography>
-        </CardContent>
-        <CardActions>
-            <Button size="small">Consultar</Button>
-        </CardActions>
-    </Card>
-);
-
-const bull = (
-    <Box
-      component="span"
-      sx={{ display: 'inline-block', mx: '2px', transform: 'scale(0.8)' }}
-    >
-      •
-    </Box>
-  );
-
-const Item = styled(Paper)(({ theme }) => ({
-    backgroundColor: theme.palette.mode === 'dark' ? '#1A2027' : '#fff',
-    ...theme.typography.body2,
-    padding: theme.spacing(1),
-    textAlign: 'center',
-    color: theme.palette.text.secondary,
-}));
 
 function removerDuplicados( ){
     fetch("http://localhost:3050/duplicados", {method: "DELETE"})
@@ -72,11 +32,11 @@ function cancelJob( ){
 
 function updateSubreddits(setData ){
 try {
-        React.useEffect(() => {
-            fetch("http://localhost:3050/subreddits")
-            .then((res) => res.json())
-            .then((data) => setData(data));
-        }, []);
+    React.useEffect(() => {
+        fetch("http://localhost:3050/subreddits")
+        .then((res) => res.json())
+        .then((data) => setData(data));
+    }, []);
         
     } catch (error) {
         console.log(error);    
@@ -85,16 +45,17 @@ try {
 
 function consultarJobConfig(setJobConfig ){
     try {
-            React.useEffect(() => {
-                fetch("http://localhost:3050/configjob")
-                .then((res) => res.json())
-                .then((data) => setJobConfig(data));
-            }, []);
-            
-        } catch (error) {
-            console.log(error);    
-        }
+        React.useEffect(() => {
+            fetch("http://localhost:3050/configjob")
+            .then((res) => res.json())
+            .then((data) => setJobConfig(data));
+        }, []);
+        
+    } catch (error) {
+        console.log(error);    
     }
+}
+
 export default function Reddit() {  
     
     const [subreddit, setSubreddit] = React.useState("");
