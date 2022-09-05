@@ -57,6 +57,10 @@ function consultar( subreddit){
     fetch("http://localhost:3050/subreddit?subreddit=" + subreddit)
 }
 
+function consultarTodos( ){
+    fetch("http://localhost:3050/runall")
+}
+
 function updateSubreddits(setData ){
 try {
         React.useEffect(() => {
@@ -97,6 +101,8 @@ export default function Reddit() {
                     </CardContent>
                     <CardActions>
                         <Button size="small" onClick={() => { removerDuplicados( );}}>Remover Duplicados</Button>
+
+                        <Button size="small" onClick={() => { consultarTodos( );}}>Consultar Todos</Button>
                     </CardActions>
                 </Card>
             </Box>
@@ -128,7 +134,6 @@ export default function Reddit() {
                     }
                 </Grid>
             </Box>
-            
       </Box>
     );
 }  

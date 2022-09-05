@@ -26,6 +26,18 @@ app.get('/subreddits', (req, res) => {
   res.send( Reddit.buscarLocalDatabaseReddits() )
 })
 
+app.get('/runall', (req, res) => {
+  const lista = Reddit.buscarLocalDatabaseReddits();
+  try {
+    lista.applets.forEach( item =>{
+      Reddit.buscarPostsReddit( item.subreddit);
+    })
+    res.send(  {"message": "ok"} )
+  } catch (error) {
+    res.send({ message: "error"})
+  }
+})
+
 app.delete('/duplicados', (req, res) => {
   console.log("Reddit.removeFilesDuplicate()");
   res.send( Reddit.removeFilesDuplicate() )

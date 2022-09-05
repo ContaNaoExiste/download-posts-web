@@ -192,10 +192,17 @@ async function getInfoRedditByName( reddit ){
         if( ! fs.existsSync(directory)) fs.mkdirSync(directory);
 
         var pathFile = directory + path.sep + reddit + ".json";
-        if( ! fs.existsSync(pathFile)){
-            await createNewDatabaseReddit(reddit);
+        var pathFileUser = directory + path.sep + "u_" + reddit + ".json";
+
+        if( fs.existsSync(pathFile)){
+            return readFileParseJson(pathFile);    
         }
-        return readFileParseJson(pathFile);    
+        
+        if( fs.existsSync(pathFileUser)){
+            return readFileParseJson(pathFileUser);    
+        }
+        await createNewDatabaseReddit(reddit);
+        return getInfoRedditByName(reddit);
     } catch (error) {
         if( process.env.DEBUG_ERROR === "true"){
             console.log("getInfoRedditByName", error);
@@ -367,7 +374,42 @@ async function downloadFilesByReturnRequest( config, data){
 }
 
 async function createNewDatabaseReddit( reddit){
-    return saveInfoReddit( reddit, getAppletJsonDefault(reddit));
+    let url = `https://www.reddit.com/r/${reddit}/new.json?limit=1`;
+    return new Promise(function (resolve, reject) {
+        request.get(url, function( error, response, body){
+                if (!error && response.statusCode == 200) {
+                    try {
+                        data = JSON.parse(Buffer.from(body).toString('utf8'));
+                        if( data.data.children.length == 0){
+                           url = `https://www.reddit.com/u/${reddit}/new.json?limit=1`;
+                            request.get(url, function( error, response, body){
+                                if (!error && response.statusCode == 200) {
+                                    try {
+                                        data = JSON.parse(Buffer.from(body).toString('utf8'));
+                                        if( data.data.children.length > 0){
+                                            resolve(data);
+                                        }else{
+                                            reject(data)
+                                        }
+                                    } catch (error) {
+                                        reject(data)
+                                        console.error(error.message)
+                                    }
+                                }
+                            });
+                        }else{
+                            resolve(data);
+                        }
+                    } catch (error) {
+                        reject(data)
+                        console.error(error.message)
+                    }
+                }
+        });
+    }).then( data=>{
+        const first_data = data.data.children.shift();
+        saveInfoReddit( first_data.data.subreddit, { "subreddit" : first_data.data.subreddit, url: url.split("?").shift(), "url_params": { "limit" : 100} })
+    });
 }
 
 function getAppletJsonDefault( reddit ){
