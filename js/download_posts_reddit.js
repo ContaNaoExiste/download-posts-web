@@ -28,51 +28,50 @@ function writeFileFromJson ( filePath , json ) {
 
 function extractedURLFromRedditData(data){
     try {
-        
-        if( data.url.startsWith("https://www.reddit.com/gallery") ){
-            let urls = [];
-            if(data.crosspost_parent_list){
-                data.crosspost_parent_list[0].gallery_data.items.forEach( (item, index) =>{
-                    urls.push({ url: "https://i.redd.it/" + item.media_id + ".jpg", name: data.name + " " + index + " " + item.media_id})
-                })
-            }
-            
-            if( data.gallery_data){
-                data.gallery_data.items.forEach( (item, index) =>{
-                    if(data.media_metadata[item.media_id]){
-                        const metadata = data.media_metadata[item.media_id];
-                        urls.push({ url: "https://i.redd.it/" + item.media_id + getTypeExtensionFile( { mimeType: metadata.m}), name: data.name + " " + index + " " + item.media_id})
-                    }else{
-                        urls.push({ url: "https://i.redd.it/" + item.media_id + ".jpg", name: data.name + " " + index + " " + item.media_id})
-                    }
-                })  
-            }
+        let urls = [];
 
-            return urls;
-        }
-        
-        if(data.media && data.media.type === "redgifs.com"){
-            data.url = data.media.oembed.thumbnail_url.replace("-mobile.jpg", ".mp4");
-        }
-        
         if(data.media && data.media.reddit_video){
-            data.url = data.media.reddit_video.fallback_url;
-        }
-        if( data.url.startsWith("https://i.pximg.net/") || data.url.startsWith("https://imgur.com/a/")){
-            let urls = [];
-            if( data.preview){
-                data.preview.images.forEach( (item, index) =>{
-                    urls.push({ url: item.source.url.replace("&amp;", "&"), name: data.name + " " + index + " " + item.id})
-                })
-            }
-            return urls;
+            return data.media.reddit_video.fallback_url;
         }
 
         let url = new URL( data.url);
-        let extension = getExtension(url.pathname);
+        if( getExtension(url.pathname) === 'gifv'){
+            return data.url.replace(".gifv", ".mp4");;
+        }
         
-        if( extension === 'gifv'){
-            data.url = data.url.replace(".gifv", ".mp4");
+        if( data.media_metadata){
+            Object.values(data.media_metadata).forEach( (item, index) =>{
+                urls.push({ url: "https://i.redd.it/" + item.id + getTypeExtensionFile( { mimeType: item.m}), name: data.name + " " + index})
+            })
+            return urls;
+        }
+
+        if( data.preview ){
+            
+            if(data.preview.reddit_video_preview){
+                return data.preview.reddit_video_preview.fallback_url;
+            }
+
+            if(data.preview.images){
+                data.preview.images.forEach( (item, index) =>{
+                    urls.push({ url: item.source.url.replace("&amp;", "&"), name: data.name + " " + index})
+                })
+            }
+            return urls;
+        }
+
+        if(data.crosspost_parent_list){
+            data.crosspost_parent_list.forEach( (item) =>{
+                let temp_url = extractedURLFromRedditData(item)
+                if( temp_url instanceof Array){
+                    temp_url.forEach( result => {
+                        urls.push(result)
+                    })
+                }else{
+                    return temp_url;
+                }
+            })
+            return urls;
         }
     } catch (error) {
         if( process.env.DEBUG_ERROR === "true"){
@@ -552,7 +551,7 @@ function removeFilesDuplicate(){
 function buscarLocalDatabaseReddits( filtro ){
     let directory = __dirname + path.sep + path.sep + ".database" + path.sep + "reddit";
     let directory_files = getPATH_DOWNLOAD_FILES();
-
+    
     let applets = [];
     let totais = { subreddits: 0, files: 0};
     let info = { espaco_usado: 0}
@@ -565,16 +564,23 @@ function buscarLocalDatabaseReddits( filtro ){
 
         totais.subreddits = files.length;
         files.forEach(element => {
+            let json = {}
+            try {
+                json = JSON.parse(fs.readFileSync(directory + path.sep + element))   
+            } catch (error) { }
+
             let subreddit = element.split(".json").shift();
             let files = 0;
             try {
                 files = fs.readdirSync( directory_files + path.sep + subreddit).length;
             } catch (error) {}
             
+            let url = ( json && json.url ? json.url : (json && json.if) ? json.if.subreddit.url: "");
             applets.push( {
                 "subreddit" : subreddit,
                 "path"      : element,
-                "files"     : files
+                "files"     : files,
+                "url"       : url
             });
 
             totais.files += files;

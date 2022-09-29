@@ -8,6 +8,7 @@ import CardContent from '@mui/material/CardContent';
 import Typography from '@mui/material/Typography';
 
 import Grid from '@mui/material/Grid';
+import { Link } from '@mui/material';
 
 function removerDuplicados( ){
     fetch("http://localhost:3050/duplicados", {method: "DELETE"})
@@ -35,7 +36,7 @@ try {
     React.useEffect(() => {
         fetch("http://localhost:3050/subreddits")
         .then((res) => res.json())
-        .then((data) => setData(data));
+        .then((data) => setData(data));        
     }, []);
         
     } catch (error) {
@@ -62,8 +63,13 @@ export default function Reddit() {
     const [job_schedule, setJob_schedule] = React.useState("");
     const [data, setData] = React.useState(null);
     const [jobConfig, setJobConfig] = React.useState(null);
-
     updateSubreddits(setData)
+    /*const timer = setTimeout(() => {
+        fetch("http://localhost:3050/subreddits")
+        .then((res) => res.json())
+        .then((data) => setData(data));        
+    }, 120000);*/
+    
     consultarJobConfig(setJobConfig)
     return (
         <Box component="form" sx={{ '& > :not(style)': { m: 1, width: '100%' }, }} noValidate autoComplete="off" >
@@ -124,6 +130,9 @@ export default function Reddit() {
                                             <Typography sx={{ fontSize: 14 }} color="text.secondary.strong" gutterBottom>
                                                 {item.subreddit}
                                             </Typography>
+                                
+                                            <Link href={item.url.split(".json")[0]} variant="body2" target="_blank" rel="noreferrer">{item.url.split(".json")[0]}</Link>
+                                            
                                             <Typography sx={{ fontSize: 14 }} color="text.secondary" gutterBottom>
                                                 Quantidade de Arquivos: {JSON.stringify(item.files)}
                                             </Typography>
