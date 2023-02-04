@@ -34,6 +34,10 @@ function extractedURLFromRedditData(data){
             return data.media.reddit_video.fallback_url;
         }
 
+        if(data.media && data.media.type === "redgifs.com"){
+            data.url = data.media.oembed.thumbnail_url.replace("-mobile.jpg", ".mp4");
+        }
+        
         let url = new URL( data.url);
         if( getExtension(url.pathname) === 'gifv'){
             return data.url.replace(".gifv", ".mp4");;
@@ -549,9 +553,51 @@ function removeFilesDuplicate(){
 }
 
 function buscarLocalDatabaseReddits( filtro ){
-    let directory = __dirname + path.sep + path.sep + ".database" + path.sep + "reddit";
-    let directory_files = getPATH_DOWNLOAD_FILES();
-    
+    let directory_files = "F:\\VisualStudio Workspace\\GoogleDriveUpload\\files";
+
+    let applets = [];
+    let totais = { subreddits: 0, files: 0};
+    let info = { espaco_usado: 0}
+    try {
+      let files = fs.readdirSync( directory_files);
+      if( files ){
+        if(filtro){
+            files = files.filter( (value)=>{ return value.match( filtro )} );
+        }
+
+        totais.subreddits = files.length;
+        files.forEach(element => {
+
+            let subreddit = element;
+            let files = 0;
+            try {
+                files = fs.readdirSync( directory_files + path.sep + subreddit).length;
+            } catch (error) {}
+            let url = ( `https://www.reddit.com/r/${element}/new`);
+            if(element.startsWith('u_')){
+                url = ( `https://www.reddit.com/u/${element.substring(2) }/`);
+            }
+            
+            applets.push( {
+                "subreddit" : subreddit,
+                "path"      : element,
+                "files"     : files,
+                "url"       : url
+            });
+
+            totais.files += files;
+        });
+      }
+    } catch (error) {
+        console.log( error );
+        applets = [];
+    }
+
+    //let directory = __dirname + path.sep + path.sep + ".database" + path.sep + "reddit";
+    //let directory_files = getPATH_DOWNLOAD_FILES();
+    /*let directory = "F:\\VisualStudio Workspace\\GoogleDriveUpload\\database\\applets";
+    let directory_files = "F:\\VisualStudio Workspace\\GoogleDriveUpload\\files";
+
     let applets = [];
     let totais = { subreddits: 0, files: 0};
     let info = { espaco_usado: 0}
@@ -589,7 +635,7 @@ function buscarLocalDatabaseReddits( filtro ){
     } catch (error) {
         console.log( error );
         applets = [];
-    }
+    }*/
     
     applets = applets.sort( (a, b) => { if ( a.files < b.files ) return 1; if ( a.files > b.files ) return -1; return 0;});
     return {applets: applets, totais: totais, info: info};

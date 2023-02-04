@@ -4,6 +4,9 @@ import Tab from '@mui/material/Tab';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import Reddit from './Reddit';
+import Danbooru from './Danbooru';
+import Twitter from './Twitter';
+import Pixiv from './Pixiv';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -45,13 +48,21 @@ export default function BasicTabs() {
         <Tabs value={value} onChange={handleChange} aria-label="basic tabs example">
           <Tab label="Reddit" {...a11yProps(0)} />
           <Tab label="Twitter" {...a11yProps(1)} />
+          <Tab label="Danbooru" {...a11yProps(2)} />
+          <Tab label="Pixiv" {...a11yProps(3)} />
         </Tabs>
       </Box>
       <TabPanel value={value} index={0}>
         <Reddit />
       </TabPanel>
       <TabPanel value={value} index={1}>
-        Item Two
+        <Twitter/>
+      </TabPanel>
+      <TabPanel value={value} index={2}>
+        <Danbooru/>
+      </TabPanel>
+      <TabPanel value={value} index={3}>
+        <Pixiv/>
       </TabPanel>
     </Box>
   );

@@ -7,8 +7,6 @@ import CardActions from '@mui/material/CardActions';
 import CardContent from '@mui/material/CardContent';
 import Typography from '@mui/material/Typography';
 
-import Switch from '@mui/material/Switch';
-
 import Grid from '@mui/material/Grid';
 import { Link } from '@mui/material';
 
@@ -59,7 +57,7 @@ function consultarJobConfig(setJobConfig ){
     }
 }
 
-export default function Reddit() {  
+export default function Danbooru() {  
     
     const [subreddit, setSubreddit] = React.useState("");
     const [job_schedule, setJob_schedule] = React.useState("");
@@ -139,11 +137,6 @@ export default function Reddit() {
                                                 Quantidade de Arquivos: {JSON.stringify(item.files)}
                                             </Typography>
                                         </CardContent>
-                                        
-                                        <CardContent>
-                                            <Switch {...{inputProps: { 'aria-label': item.subreddit }}} />
-                                        </CardContent>
-                                        
                                         <CardActions>
                                             <Button size="small"  onClick={() => { consultar( item.subreddit);}}>Consultar</Button>
                                         </CardActions>
