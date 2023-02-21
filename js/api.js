@@ -39,7 +39,8 @@ app.delete('/duplicados', (req, res) => {
 
 /**** JOBS ***/
 app.get('/updatejob', (req, res) => {
-  Jobs.startJob(req.query.params, Reddit.buscarTodosPostReddit);
+  console.log(" Chegou aqui");
+  Jobs.startJob(req.query.params, ()=>{Reddit.buscarTodosPostReddit("new")});
 })
 
 app.get('/stopjob', (req, res) => {

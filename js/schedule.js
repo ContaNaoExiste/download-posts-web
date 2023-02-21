@@ -1,4 +1,3 @@
-
 const schedule = require('node-schedule');
 const fs = require('fs');
 const path = require("path");
@@ -7,14 +6,17 @@ let job = null;
 
 async function startJob( params, callback ){
     if( job ){
-        job.cancel();
+        job.cancel()
     }
-    const config = {
-        "rule": params
-    }
-    salvarConfigJob( config );
 
-    job = schedule.scheduleJob(params, callback);
+    let config = getConfigJob()
+    if( params ){
+         config = {
+            "rule": params
+        }
+        salvarConfigJob( config );
+    }
+    job = schedule.scheduleJob(config, callback);
 }
 
 async function stopJob( ){
@@ -26,6 +28,12 @@ async function stopJob( ){
             resolve();
         }
     });    
+}
+
+function reschedule(params){
+    if( job && params){
+        job.reschedule(params)
+    }
 }
 
 function salvarConfigJob(config){
@@ -61,5 +69,6 @@ function getConfigJob(){
 module.exports = {
     startJob,
     stopJob,
-    getConfigJob
+    getConfigJob,
+    reschedule
 }

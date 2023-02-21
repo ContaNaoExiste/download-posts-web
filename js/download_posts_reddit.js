@@ -56,33 +56,34 @@ function extractedURLFromRedditData(data){
                 return data.preview.reddit_video_preview.fallback_url;
             }
 
-            if(data.preview.images){
+            if(data.preview.images.length > 0){
                 data.preview.images.forEach( (item, index) =>{
-                    urls.push({ url: item.source.url.replace("&amp;", "&"), name: data.name + " " + index})
+                    urls.push({ url: item.source.url.split("&amp;").join("&"), name: data.name + " " + index})
                 })
+                return urls;
             }
-            return urls;
         }
 
-        if(data.crosspost_parent_list){
+        if(data.crosspost_parent_list && data.crosspost_parent_list.length > 0){
             data.crosspost_parent_list.forEach( (item) =>{
+                
                 let temp_url = extractedURLFromRedditData(item)
                 if( temp_url instanceof Array){
                     temp_url.forEach( result => {
                         urls.push(result)
                     })
                 }else{
-                    return temp_url;
+                    urls.push( {url: temp_url, name: item.name + " " + urls.length})
                 }
             })
             return urls;
         }
+        
     } catch (error) {
         if( process.env.DEBUG_ERROR === "true"){
-            console.error("extractedURLFromRedditData", error);
+            console.error("extractedURLFromRedditData", error)
         }
     }
-   
     return data.url;
 }
 
@@ -143,6 +144,10 @@ async function requestDowloadFileFromURL(url, data, name){
     
     try {
         let directory = getPATH_DOWNLOAD_FILES() + path.sep + data.subreddit;
+        
+        if( data.crosspost_parent_list && data.crosspost_parent_list.length > 0)
+            directory = getPATH_DOWNLOAD_FILES() + path.sep + data.crosspost_parent_list[0].subreddit;
+
         if( ! fs.existsSync(directory)) fs.mkdirSync( directory);
         
         var pathFile = directory + path.sep + removeInvalidCharacteresPath( name || data.name) + "." + getExtension(url);
@@ -155,7 +160,7 @@ async function requestDowloadFileFromURL(url, data, name){
     }
     return new Promise(function (resolve, reject) {
         data.fullurl = url;
-        request.get(url, function( error, response, body){
+        request.get(url, {headers:{"cookie": process.env.REDDIT_COOKIE} }, function( error, response, body){
 
                 if (!error && response.statusCode == 200) {
                     try {
@@ -301,7 +306,16 @@ async function generateNextUrlIfReddit( config , old_url){
     let config_if = config;
     if( config_if ){
         const reddit = config_if.subreddit;
-        var dir = __dirname + path.sep + ".database" + path.sep + "logs" + path.sep + reddit;
+        //var dir = __dirname + path.sep + ".database" + path.sep + "logs" + path.sep + reddit;
+        let dir = __dirname + path.sep + ".database";    
+        if( ! fs.existsSync(dir)) fs.mkdirSync(dir);
+        
+        dir += path.sep + "logs";
+        if( ! fs.existsSync(dir)) fs.mkdirSync(dir);
+
+        dir += path.sep + reddit;
+        if( ! fs.existsSync(dir)) fs.mkdirSync(dir);
+        
         let files = null;
         await getSortedFiles( dir ).then( (lista )  =>{
             files = lista.reverse();
@@ -337,7 +351,7 @@ async function requestURLReddit( url, config, callback, last_url){
             requestURLReddit( next_url, config, callback, url);
         });
     }
-    request.get(url.href, ( error, response, body)=>{
+    request.get(url.href, {headers:{"cookie": process.env.REDDIT_COOKIE} }, ( error, response, body)=>{
         if (!error && response.statusCode == 200) {
             data = JSON.parse(Buffer.from(body).toString('utf8'));
             if( data.data.children && data.data.children.length > 0){
@@ -378,13 +392,13 @@ async function downloadFilesByReturnRequest( config, data){
 async function createNewDatabaseReddit( reddit){
     let url = `https://www.reddit.com/r/${reddit}/new.json?limit=1`;
     return new Promise(function (resolve, reject) {
-        request.get(url, function( error, response, body){
+        request.get(url, {headers:{"cookie": process.env.REDDIT_COOKIE} }, function( error, response, body){
                 if (!error && response.statusCode == 200) {
                     try {
                         data = JSON.parse(Buffer.from(body).toString('utf8'));
                         if( data.data.children.length == 0){
                            url = `https://www.reddit.com/u/${reddit}/new.json?limit=1`;
-                            request.get(url, function( error, response, body){
+                            request.get(url, {headers:{"cookie": process.env.REDDIT_COOKIE} }, function( error, response, body){
                                 if (!error && response.statusCode == 200) {
                                     try {
                                         data = JSON.parse(Buffer.from(body).toString('utf8'));
@@ -424,8 +438,8 @@ function getAppletJsonDefault( reddit ){
 
 async function buscarPostsReddit( subreddit ){
     try {
-
         return new Promise(function (resolve, reject) {        
+
             getInfoRedditByName(subreddit).then( (config ) =>{
                 if( config ){
                     getContentIfReddit(config, (config2, json) =>{
@@ -553,7 +567,7 @@ function removeFilesDuplicate(){
 }
 
 function buscarLocalDatabaseReddits( filtro ){
-    let directory_files = "F:\\VisualStudio Workspace\\GoogleDriveUpload\\files";
+    let directory_files = path.resolve(__dirname, ".database", "reddit");
 
     let applets = [];
     let totais = { subreddits: 0, files: 0};
@@ -564,7 +578,6 @@ function buscarLocalDatabaseReddits( filtro ){
         if(filtro){
             files = files.filter( (value)=>{ return value.match( filtro )} );
         }
-
         totais.subreddits = files.length;
         files.forEach(element => {
 
@@ -572,14 +585,16 @@ function buscarLocalDatabaseReddits( filtro ){
             let files = 0;
             try {
                 files = fs.readdirSync( directory_files + path.sep + subreddit).length;
-            } catch (error) {}
+            } catch (error) {
+                files = 0
+            }
             let url = ( `https://www.reddit.com/r/${element}/new`);
             if(element.startsWith('u_')){
                 url = ( `https://www.reddit.com/u/${element.substring(2) }/`);
             }
             
             applets.push( {
-                "subreddit" : subreddit,
+                "subreddit" : subreddit.split(".json")[0],
                 "path"      : element,
                 "files"     : files,
                 "url"       : url
@@ -592,57 +607,13 @@ function buscarLocalDatabaseReddits( filtro ){
         console.log( error );
         applets = [];
     }
-
-    //let directory = __dirname + path.sep + path.sep + ".database" + path.sep + "reddit";
-    //let directory_files = getPATH_DOWNLOAD_FILES();
-    /*let directory = "F:\\VisualStudio Workspace\\GoogleDriveUpload\\database\\applets";
-    let directory_files = "F:\\VisualStudio Workspace\\GoogleDriveUpload\\files";
-
-    let applets = [];
-    let totais = { subreddits: 0, files: 0};
-    let info = { espaco_usado: 0}
-    try {
-      let files = fs.readdirSync( directory);
-      if( files ){
-        if(filtro){
-            files = files.filter( (value)=>{ return value.match( filtro )} );
-        }
-
-        totais.subreddits = files.length;
-        files.forEach(element => {
-            let json = {}
-            try {
-                json = JSON.parse(fs.readFileSync(directory + path.sep + element))   
-            } catch (error) { }
-
-            let subreddit = element.split(".json").shift();
-            let files = 0;
-            try {
-                files = fs.readdirSync( directory_files + path.sep + subreddit).length;
-            } catch (error) {}
-            
-            let url = ( json && json.url ? json.url : (json && json.if) ? json.if.subreddit.url: "");
-            applets.push( {
-                "subreddit" : subreddit,
-                "path"      : element,
-                "files"     : files,
-                "url"       : url
-            });
-
-            totais.files += files;
-        });
-      }
-    } catch (error) {
-        console.log( error );
-        applets = [];
-    }*/
     
     applets = applets.sort( (a, b) => { if ( a.files < b.files ) return 1; if ( a.files > b.files ) return -1; return 0;});
     return {applets: applets, totais: totais, info: info};
 }
 
-function buscarTodosPostReddit(){
-    const lista = buscarLocalDatabaseReddits();
+function buscarTodosPostReddit(filtro){
+    const lista = buscarLocalDatabaseReddits(filtro);
     lista.applets.forEach( item =>{
         buscarPostsReddit( item.subreddit );
     })
