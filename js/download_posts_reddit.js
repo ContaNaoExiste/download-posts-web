@@ -179,14 +179,22 @@ async function requestDowloadFileFromURL(url, data, name){
 }
 
 async function dowloadFileFromDataURL( data){
-    const url = extractedURLFromRedditData(data)
-    if( url instanceof Array){
-        url.forEach( async ( item ) =>{
-            await requestDowloadFileFromURL( item.url, data, item.name)
-        })
-    }else{
-        await requestDowloadFileFromURL( url, data)
-    }
+    return new Promise(function (resolve, reject) {
+        const url = extractedURLFromRedditData(data)
+         if( ! url) resolve()
+        
+        if( url instanceof Array){
+            url.forEach( ( item ) =>{
+                requestDowloadFileFromURL( item.url, data, item.name).finally(()=>{
+                    resolve()
+                })
+            })
+        }else{
+            requestDowloadFileFromURL( url, data).finally(()=>{
+                resolve()
+            })
+        }
+    });
 }
 
 
@@ -223,6 +231,8 @@ async function setContentThenGoogleDrive( config, data){
      return new Promise(function (resolve, reject) {
         if( data.data && data.data.children ){
             next_data_children(data.data.children.reverse(), config, data, resolve);
+        }else{
+            resolve()
         }
     });  
 }
@@ -564,6 +574,8 @@ function listFilesRemoveFilesDuplicate( path_folder, posts ){
 */
 function removeFilesDuplicate(){
     listFilesRemoveFilesDuplicate( getPATH_DOWNLOAD_FILES(), {});
+    
+    console.log("Terminou Remoção de Duplicados");
 }
 
 function buscarLocalDatabaseReddits( filtro ){
