@@ -2,8 +2,12 @@ const fs = require('fs');
 const crypto = require("crypto");
 const path = require("path");
 const request = require('request').defaults({ encoding: null });
-const IQDB  = require("./iqdb")
+const IQDB  = require("./iqdb");
+const { resolve } = require('path');
 require('dotenv/config');
+
+let FILA_DOWNLOAD = [];
+let FILA_URL_DOWNLOAD = {}
 
 function readFileParseJson ( filePath ){
     try {
@@ -142,7 +146,8 @@ function removeInvalidCharacteresPath( stringToReplace ){
     return replaceAll(stringToReplace, "\"", "");
 }
 
-function addLogIQDBSearch(iqdb_best, url, data, name){
+function addLogIQDBSearch(iqdb_best, download){
+    let data = download.post.data
     let directory = __dirname + path.sep + ".database" + path.sep + "log_iqdb"
     if( ! fs.existsSync(directory)) fs.mkdirSync( directory)
     
@@ -153,14 +158,15 @@ function addLogIQDBSearch(iqdb_best, url, data, name){
 
     if( ! fs.existsSync(directory)) fs.mkdirSync( directory)
     
-    var pathFile = directory + path.sep + removeInvalidCharacteresPath( name || data.name) + ".json"
+    var pathFile = directory + path.sep + removeInvalidCharacteresPath( download.name) + ".json"
     if( fs.existsSync(pathFile) ) fs.unlinkSync(pathFile)
-    
+
     const json_completo = {
         iqdb: iqdb_best,
         reddit: data,
-        url: url,
-        name: (name || data.name)
+        url: download.download,
+        url_iqdb: download.url_iqdb,
+        name: download.name
     }
     fs.writeFileSync(pathFile, JSON.stringify(json_completo));    
 }
@@ -175,38 +181,39 @@ function existInDirectoryIQDB(url, data, name){
         directory += path.sep + data.subreddit
     
     var pathFile = directory + path.sep + removeInvalidCharacteresPath( name || data.name) + "." + getExtension(url);
-    if( fs.existsSync(pathFile) ) return null; // Se existe não baixa de novo
-    console.log("existe? ", pathFile, fs.existsSync(pathFile));
     return fs.existsSync(pathFile)
 }
 
 function getURLSearchIQDB(url, data){
     let name = url.split("/").pop().split(".").shift()
     if(data.media_metadata && data.media_metadata[name]){
-        console.log("url thumbnail", data.media_metadata[name].p[0].u.split("&amp;").join("&"));
         return data.media_metadata[name].p[0].u.split("&amp;").join("&")
     }
-        
     return url
 }
 
-async function requestDowloadFileFromURL(url, data, name){
+async function requestDowloadFileFromURL(download){
+
+    let url = download.download
+    let name = download.name
+    let data = download.post.data
+    let url_iqdb = download.url_iqdb
     if( ! url) return null
-        
     if( process.env.ACCEPT_FORMAT_FILES && !(process.env.ACCEPT_FORMAT_FILES.includes( getExtension( url) )))
         return null
     
-    if(  existInDirectoryIQDB(url, data, name) )
-        return null
     try {
+        if(  existInDirectoryIQDB(url, data, name) )
+            return null
+        
         let iqdb_best = null
         try {
-            iqdb_best = await IQDB.search_best_match(url)
+            iqdb_best = await IQDB.search_best_match(url_iqdb)
             if( iqdb_best){
-                addLogIQDBSearch(iqdb_best, getURLSearchIQDB(url, data), data, name)
+                addLogIQDBSearch(iqdb_best, download)
             }    
         } catch (error) {
-            console.log("Erro consulta IQDB: ", error);
+            console.log("Erro consulta IQDB: ",url_iqdb,  error);
             iqdb_best = null
         }
         
@@ -255,20 +262,9 @@ async function requestDowloadFileFromURL(url, data, name){
 
 async function dowloadFileFromDataURL( data){
     return new Promise(function (resolve, reject) {
-        const url = extractedURLFromRedditData(data)
-         if( ! url) resolve()
-        
-        if( url instanceof Array){
-            url.forEach( ( item ) =>{
-                requestDowloadFileFromURL( item.url, data, item.name).finally(()=>{
-                    resolve()
-                })
-            })
-        }else{
-            requestDowloadFileFromURL( url, data).finally(()=>{
-                resolve()
-            })
-        }
+        requestDowloadFileFromURL( data).finally(()=>{
+            resolve()
+        })
     });
 }
 
@@ -302,35 +298,60 @@ async function getInfoRedditByName( reddit ){
     return null;
 }
 
-async function setContentThenGoogleDrive( config, data){
-     return new Promise(function (resolve, reject) {
-        if( data.data && data.data.children ){
-            next_data_children(data.data.children.reverse(), config, data, resolve);
-        }else{
-            resolve()
+function addFilaDownload(children){
+    let url = extractedURLFromRedditData(children.data)
+    if( url){
+        if( ! (url instanceof Array)){
+            url = [url]
         }
-    });  
+        url.forEach( ( item ) =>{
+            let download = item.url || item
+            
+            if( ! FILA_URL_DOWNLOAD[download]){
+                FILA_URL_DOWNLOAD[download] = download
+                if( process.env.ACCEPT_FORMAT_FILES && (process.env.ACCEPT_FORMAT_FILES.includes( getExtension( download ) ))){
+                    FILA_DOWNLOAD.push({
+                        "download": download,
+                        "name"  : item.name || children.data.name,
+                        "post"  : children,
+                        "url_iqdb": getURLSearchIQDB(download, children.data)
+                    })  
+                }
+            }  
+        })
+    }
 }
 
-function next_data_children( vetor, config, data, resolve){
-    if( vetor.length > 0 ){
-        let element = vetor.shift();
-        if( element.data ){
+async function processarFilaDownload(config, resolve, reject){
+    if(FILA_DOWNLOAD.length == 0){
+        resolve()
+    }
+    if( FILA_DOWNLOAD.length){
+        let element = FILA_DOWNLOAD.shift()
+        requestDowloadFileFromURL( element ).finally(()=>{
             if( ! config.url_params){
                 config.url_params = {};
             }
-            config.url_params.before = element.data.name;
-            
-            dowloadFileFromDataURL(element.data).then(() =>{
-                saveInfoReddit( config.subreddit, config);
-                
-                next_data_children(vetor, config, data, resolve);
-            });
-        }
-    }else{
-        resolve();
+            config.url_params.before = element.post.data.name;
+            saveInfoReddit( config.subreddit, config)    
+            processarFilaDownload(config, resolve, reject)
+        })
     }
 }
+
+async function setContentThenGoogleDrive( config, data){
+    if( data.data && data.data.children ){
+        data.data.children.reverse().forEach(children => {
+            addFilaDownload(children)
+        })
+    }
+
+    return new Promise(function (resolve, reject) {
+        console.log("Será feito o download de " + FILA_DOWNLOAD.length + " arquivos!!");
+        processarFilaDownload(config, resolve, reject)
+    })
+}
+
 function saveInfoReddit( reddit, value){
     var pathFile = __dirname + path.sep + ".database" + path.sep + "reddit" + path.sep + reddit + ".json";
     return writeFileFromJson(pathFile, value);
@@ -391,7 +412,6 @@ async function generateNextUrlIfReddit( config , old_url){
     let config_if = config;
     if( config_if ){
         const reddit = config_if.subreddit;
-        //var dir = __dirname + path.sep + ".database" + path.sep + "logs" + path.sep + reddit;
         let dir = __dirname + path.sep + ".database";    
         if( ! fs.existsSync(dir)) fs.mkdirSync(dir);
         
@@ -477,7 +497,9 @@ async function downloadFilesByReturnRequest( config, data){
 async function createNewDatabaseReddit( reddit){
     let url = `https://www.reddit.com/r/${reddit}/new.json?limit=1`;
     return new Promise(function (resolve, reject) {
+        console.log(url, " url");
         request.get(url, {headers:{"cookie": process.env.REDDIT_COOKIE} }, function( error, response, body){
+            console.log(error, response.statusCode);
                 if (!error && response.statusCode == 200) {
                     try {
                         data = JSON.parse(Buffer.from(body).toString('utf8'));
@@ -508,6 +530,7 @@ async function createNewDatabaseReddit( reddit){
                 }
         });
     }).then( data=>{
+        console.log(data, " data");
         const first_data = data.data.children.shift();
         saveInfoReddit( first_data.data.subreddit, { "subreddit" : first_data.data.subreddit, url: url.split("?").shift(), "url_params": { "limit" : 100} })
     });
@@ -523,8 +546,7 @@ function getAppletJsonDefault( reddit ){
 
 async function buscarPostsReddit( subreddit ){
     try {
-        return new Promise(function (resolve, reject) {        
-
+        return new Promise( (resolve, reject) => {
             getInfoRedditByName(subreddit).then( (config ) =>{
                 if( config ){
                     getContentIfReddit(config, (config2, json) =>{
@@ -532,6 +554,8 @@ async function buscarPostsReddit( subreddit ){
                             resolve( config);
                         });
                     })
+                }else{
+                    reject()
                 }
             })
         });
