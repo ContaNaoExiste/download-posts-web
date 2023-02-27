@@ -15,7 +15,7 @@ function main(params) {
             Reddit.removeFilesDuplicate()
 
             let data_now =  new Date();
-            data_now = new Date(data_now.getTime() + 2 * 60 * 1000)
+            data_now = new Date(data_now.getTime() + 30 * 60 * 1000)
             const job_str = data_now.getMinutes() + " * * * *"
             Jobs.reschedule( job_str )
         })

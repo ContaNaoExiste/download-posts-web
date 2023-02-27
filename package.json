@@ -4,6 +4,7 @@
   "description": "Código fonte utilizado para realizar download dos arquivos (Fotos, Gifs, Videos) anexados aos posts enviados em um subreddit.",
   "main": "index.js",
   "dependencies": {
+    "@l2studio/iqdb-api": "^0.2.0",
     "ajv": "^6.12.6",
     "asn1": "^0.2.6",
     "assert-plus": "^1.0.0",
@@ -60,8 +61,8 @@
   },
   "scripts": {
     "start": "(node js/api.js) && echo \"Agora vai!\" && (cd client && npm start)",
-    "api" : "node js/api.js",
-    "web" : "(cd client && npm start)",
+    "api": "node js/api.js",
+    "web": "(cd client && npm start)",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

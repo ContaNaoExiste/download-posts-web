@@ -2,6 +2,7 @@ const fs = require('fs');
 const crypto = require("crypto");
 const path = require("path");
 const request = require('request').defaults({ encoding: null });
+const IQDB  = require("./iqdb")
 require('dotenv/config');
 
 function readFileParseJson ( filePath ){
@@ -40,7 +41,11 @@ function extractedURLFromRedditData(data){
         
         let url = new URL( data.url);
         if( getExtension(url.pathname) === 'gifv'){
-            return data.url.replace(".gifv", ".mp4");;
+            return data.url.replace(".gifv", ".mp4")
+        }
+        
+        if( getExtension(url.pathname) === 'gif'){
+            return data.url
         }
         
         if( data.media_metadata){
@@ -137,25 +142,95 @@ function removeInvalidCharacteresPath( stringToReplace ){
     return replaceAll(stringToReplace, "\"", "");
 }
 
-async function requestDowloadFileFromURL(url, data, name){
-    if( ! url) return null;
+function addLogIQDBSearch(iqdb_best, url, data, name){
+    let directory = __dirname + path.sep + ".database" + path.sep + "log_iqdb"
+    if( ! fs.existsSync(directory)) fs.mkdirSync( directory)
     
-    if( process.env.ACCEPT_FORMAT_FILES && !(process.env.ACCEPT_FORMAT_FILES.includes( getExtension( url) ))) return null;
+    if( data.crosspost_parent_list && data.crosspost_parent_list.length > 0)
+        directory += path.sep + data.crosspost_parent_list[0].subreddit
+    else
+        directory += path.sep + data.subreddit
+
+    if( ! fs.existsSync(directory)) fs.mkdirSync( directory)
     
-    try {
-        let directory = getPATH_DOWNLOAD_FILES() + path.sep + data.subreddit;
+    var pathFile = directory + path.sep + removeInvalidCharacteresPath( name || data.name) + ".json"
+    if( fs.existsSync(pathFile) ) fs.unlinkSync(pathFile)
+    
+    const json_completo = {
+        iqdb: iqdb_best,
+        reddit: data,
+        url: url,
+        name: (name || data.name)
+    }
+    fs.writeFileSync(pathFile, JSON.stringify(json_completo));    
+}
+
+function existInDirectoryIQDB(url, data, name){
+    let directory = getPATH_DOWNLOAD_FILES() + path.sep + "iqdb"
+    if( ! fs.existsSync(directory)) fs.mkdirSync( directory);
+
+    if( data.crosspost_parent_list && data.crosspost_parent_list.length > 0)
+        directory += path.sep + data.crosspost_parent_list[0].subreddit;
+    else
+        directory += path.sep + data.subreddit
+    
+    var pathFile = directory + path.sep + removeInvalidCharacteresPath( name || data.name) + "." + getExtension(url);
+    if( fs.existsSync(pathFile) ) return null; // Se existe não baixa de novo
+    console.log("existe? ", pathFile, fs.existsSync(pathFile));
+    return fs.existsSync(pathFile)
+}
+
+function getURLSearchIQDB(url, data){
+    let name = url.split("/").pop().split(".").shift()
+    if(data.media_metadata && data.media_metadata[name]){
+        console.log("url thumbnail", data.media_metadata[name].p[0].u.split("&amp;").join("&"));
+        return data.media_metadata[name].p[0].u.split("&amp;").join("&")
+    }
         
+    return url
+}
+
+async function requestDowloadFileFromURL(url, data, name){
+    if( ! url) return null
+        
+    if( process.env.ACCEPT_FORMAT_FILES && !(process.env.ACCEPT_FORMAT_FILES.includes( getExtension( url) )))
+        return null
+    
+    if(  existInDirectoryIQDB(url, data, name) )
+        return null
+    try {
+        let iqdb_best = null
+        try {
+            iqdb_best = await IQDB.search_best_match(url)
+            if( iqdb_best){
+                addLogIQDBSearch(iqdb_best, getURLSearchIQDB(url, data), data, name)
+            }    
+        } catch (error) {
+            console.log("Erro consulta IQDB: ", error);
+            iqdb_best = null
+        }
+        
+        let directory = getPATH_DOWNLOAD_FILES()
+        if(iqdb_best) 
+            directory += path.sep + "iqdb"
+        else 
+            directory += path.sep + "geral"
+        if( ! fs.existsSync(directory)) fs.mkdirSync( directory);
+
         if( data.crosspost_parent_list && data.crosspost_parent_list.length > 0)
-            directory = getPATH_DOWNLOAD_FILES() + path.sep + data.crosspost_parent_list[0].subreddit;
+            directory += path.sep + data.crosspost_parent_list[0].subreddit;
+        else
+            directory += path.sep + data.subreddit
 
         if( ! fs.existsSync(directory)) fs.mkdirSync( directory);
-        
+       
         var pathFile = directory + path.sep + removeInvalidCharacteresPath( name || data.name) + "." + getExtension(url);
         if( fs.existsSync(pathFile) ) return null; // Se existe não baixa de novo
-        
+       
+
     } catch (error) {
         if( process.env.DEBUG_ERROR === "true"){
-            console.error("extractedURLFromRedditData", error);
+            console.error("requestDowloadFileFromURL", url, error);
         }
     }
     return new Promise(function (resolve, reject) {
