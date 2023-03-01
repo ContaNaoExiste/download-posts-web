@@ -67,7 +67,14 @@ function extractedURLFromRedditData(data){
 
             if(data.preview.images.length > 0){
                 data.preview.images.forEach( (item, index) =>{
-                    urls.push({ url: item.source.url.split("&amp;").join("&"), name: data.name + " " + index})
+                    let url_obj = { 
+                        url: item.source.url.split("&amp;").join("&"), 
+                        name: data.name + " " + index
+                    }
+                    if( item.resolutions.length > 0){
+                        url_obj.url_iqdb = item.resolutions[0].url.split("&amp;").join("&")
+                    }
+                    urls.push(url_obj)
                 })
                 return urls;
             }
@@ -117,7 +124,6 @@ function getTypeExtensionFile(data){
     if(data.mimeType == "image/png"){
         return ".png"
     }
-
     throw new Error("Erro tipo nãp suportado" + " Type " + data.mimeType + ' URL ' + data.subreddit + "\\" + data.fullurl)
 }
 
@@ -314,7 +320,7 @@ function addFilaDownload(children){
                         "download": download,
                         "name"  : item.name || children.data.name,
                         "post"  : children,
-                        "url_iqdb": getURLSearchIQDB(download, children.data)
+                        "url_iqdb": getURLSearchIQDB( item.url_iqdb || download, children.data)
                     })  
                 }
             }  
@@ -678,7 +684,7 @@ function removeFilesDuplicate(){
 }
 
 function buscarLocalDatabaseReddits( filtro ){
-    let directory_files = path.resolve(__dirname, ".database", "reddit");
+    let directory_files = path.resolve(__dirname, ".database", process.env.PATH_DOWNLOAD_FILES, "iqdb");
 
     let applets = [];
     let totais = { subreddits: 0, files: 0};
@@ -730,10 +736,75 @@ function buscarTodosPostReddit(filtro){
     })
 }
 
+function chunkArray(arr, len) {
+
+    var chunks = [],
+        i = 0,
+        n = arr.length;
+
+    while (i < n) {
+        chunks.push(arr.slice(i, i += len));
+    }
+
+    return chunks;
+}
+
+function buscarTodasTagsIQDB(filtro){
+    const TAGS_IQDB = {}
+    let directory_files = path.resolve(__dirname, ".database", "log_iqdb");
+    try {
+      let folders = fs.readdirSync( directory_files);
+      if( ! filtro)
+        filtro = "ZettaiRyouiki"
+    
+      if(filtro){
+        folders = folders.filter( (value)=>{ return value.toUpperCase().match( filtro.toUpperCase() )} );
+    }
+      if( folders.length ){
+        chunkArray(folders.reverse(), 50)[0].forEach(element => {
+            let files = fs.readdirSync( path.resolve(directory_files, element));
+            files.forEach(file => {
+                const rawdata = fs.readFileSync( path.resolve(directory_files, element, file))
+                const json = JSON.parse(rawdata)
+
+                if (json.iqdb && json.iqdb.results) {
+                    const tags = json.iqdb.results[0].thumbnail.tags
+                    if( tags){
+                        tags.forEach(tag => {
+                            if(! TAGS_IQDB[tag]){
+                                TAGS_IQDB[tag] ={
+                                    total: 0,
+                                    tag: tag,
+                                    urls: [],
+                                    urls_iqdb: [],
+                                    names: []
+                                }
+                            }
+                            TAGS_IQDB[tag].total ++;
+                            TAGS_IQDB[tag].urls.push(json.url);
+                            TAGS_IQDB[tag].urls_iqdb.push(json.url_iqdb || json.iqdb.results[0].thumbnail.fixedSrc);
+                            TAGS_IQDB[tag].names.push(json.name);
+                        });
+                    }
+                }
+            }); 
+        });
+      }
+    } catch (error) {
+        console.log(error );
+    }
+    
+    return {
+        tags: chunkArray(Object.values(TAGS_IQDB).sort((a, b) =>{return a.total - b.total}).reverse(), 20)[0],
+        total: Object.values(TAGS_IQDB).length
+    }
+}
+
 module.exports = {
     buscarPostsReddit,
     buscarLocalDatabaseReddits,
     uploadGoogleDriveByJson,
     removeFilesDuplicate,
-    buscarTodosPostReddit
+    buscarTodosPostReddit,
+    buscarTodasTagsIQDB
 }

@@ -57,6 +57,11 @@ app.get('/configjob', (req, res) => {
 })
 /**** JOBS ***/
 
+/*** TAGS **/
+app.get('/tags', (req, res) => {
+  res.send( Reddit.buscarTodasTagsIQDB(req.query.filtro) )
+})
+/*** TAGS **/
 app.listen(port, () => {
     console.log(`API iniciada na porta ${port}`)
 })

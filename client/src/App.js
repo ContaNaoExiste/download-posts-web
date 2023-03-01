@@ -7,6 +7,7 @@ import Reddit from './Reddit';
 import Danbooru from './Danbooru';
 import Twitter from './Twitter';
 import Pixiv from './Pixiv';
+import TagsIQDB from './TagsIQDB';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -36,7 +37,7 @@ function a11yProps(index: number) {
 }
 
 export default function BasicTabs() {
-  const [value, setValue] = React.useState(0);
+  const [value, setValue] = React.useState(4);
 
   const handleChange = (event: React.SyntheticEvent, newValue: number) => {
     setValue(newValue);
@@ -50,6 +51,7 @@ export default function BasicTabs() {
           <Tab label="Twitter" {...a11yProps(1)} />
           <Tab label="Danbooru" {...a11yProps(2)} />
           <Tab label="Pixiv" {...a11yProps(3)} />
+          <Tab label="Tags IQDB" {...a11yProps(4)} />
         </Tabs>
       </Box>
       <TabPanel value={value} index={0}>
@@ -63,6 +65,9 @@ export default function BasicTabs() {
       </TabPanel>
       <TabPanel value={value} index={3}>
         <Pixiv/>
+      </TabPanel>
+      <TabPanel value={value} index={4}>
+        <TagsIQDB/>
       </TabPanel>
     </Box>
   );
