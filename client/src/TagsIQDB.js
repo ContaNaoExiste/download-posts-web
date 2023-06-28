@@ -18,6 +18,20 @@ import ImageListItem from '@mui/material/ImageListItem';
 import ImageListItemBar from '@mui/material/ImageListItemBar';
 import IconButton from '@mui/material/IconButton';
 
+function consultarUrlFromTag(setUrls, tag){
+    let urls = []
+    try {
+        //React.useEffect(() => {
+        return fetch("http://localhost:3050/tag-urls" + ( tag ? "?tag="+tag: ""))
+            .then((res) => res.json())
+            .then((data) => setUrls(data));
+                    
+        //}, []);
+    } catch (error) {
+        console.log(error);    
+    }
+    return urls
+}
 function consultarTags(setTags, filtro){
     try {
         React.useEffect(() => {
@@ -47,7 +61,18 @@ export default function TagsIQDB() {
     
     const [tags, setTags] = React.useState("")
     const [filtro, setFiltro] = React.useState("")
+    const [urls, setUrls] = React.useState("")
     consultarTags(setTags, filtro)
+    /*if( tags ){
+        try {
+            tags.forEach(element => {
+                consultarUrlFromTag(element, element.tag)
+            });    
+        } catch (error) {
+            
+        }
+        
+    }*/
     return (
         <Box component="form" sx={{ '& > :not(style)': { m: 1, width: '100%' }, }} noValidate autoComplete="off" >
             <Box component="form" sx={{ '& > :not(style)': { m: 1, width: '25%' }, }} noValidate autoComplete="off" >
@@ -72,7 +97,6 @@ export default function TagsIQDB() {
                     { ! tags? "Carregando..." : 
                         tags && (! tags.tags || tags.tags.length == 0) ? "Não foi encontrado registros.":
                         tags.tags.map( item => {
-                            
                             return (
                                 <Grid item xs="auto">
                                     <Card sx={{ minWidth: 275 }}>
@@ -85,25 +109,28 @@ export default function TagsIQDB() {
                                                 Quantidade de Arquivos: {JSON.stringify(item.total)}
                                             </Typography>
 
+                                            
+                                            <Button variant="contained" onClick={() => { consultarUrlFromTag(setUrls, item.tag);}}>Consultar</Button>
                                             <Accordion>
                                                 <AccordionSummary aria-controls="panel1a-content" id="panel1a-header" >
                                                     <Typography>URLs</Typography>
                                                 </AccordionSummary>
                                                 <AccordionDetails>
-                                                <ImageList sx={{ width: 250, height: 225 }} cols={2} rowHeight={164}>
+                                               <ImageList sx={{ width: 250, height: 225 }} cols={2} rowHeight={164}>
                                             {
-                                                item.urls.map( (url, index) =>{
+                                                
+                                                (urls.urls || []).map( (url, index) =>{
                                                 return (
-                                                    <ImageListItem key={item.tag}>
+                                                    <ImageListItem key={url.tag}>
                                                         <img
-                                                            src={`${item.urls_iqdb[index]}`}
-                                                            srcSet={`${item.urls_iqdb[index]}`}
-                                                            alt={item.names[index]}
+                                                            src={`${url.url}`}
+                                                            srcSet={`${url.url}`}
+                                                            alt={url.name}
                                                             loading="lazy"
                                                         />
                                                         <ImageListItemBar
                                                             actionIcon={
-                                                                <Link href={url} variant="body2" target="_blank" rel="noreferrer">{item.names[index]}</Link>
+                                                                <Link href={url.url} variant="body2" target="_blank" rel="noreferrer">{url.name}</Link>
                                                             }
                                                         />
                                                     </ImageListItem>  

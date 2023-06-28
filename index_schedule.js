@@ -2,7 +2,7 @@ const Reddit  = require("./js/download_posts_reddit");
 const Jobs = require('./js/schedule');
 
 function main(params) {
-    console.log('Iniciou o serviço');
+    console.log('Iniciou o serviço', (new Date().toLocaleDateString("pt-BR").split("/").join("-")));
 
     let data_now =  new Date();
     data_now = new Date(data_now.getTime() + 1 * 60 * 1000)
@@ -15,7 +15,7 @@ function main(params) {
             Reddit.removeFilesDuplicate()
 
             let data_now =  new Date();
-            data_now = new Date(data_now.getTime() + 30 * 60 * 1000)
+            data_now = new Date(data_now.getTime() + 1 * 60 * 1000)
             const job_str = data_now.getMinutes() + " * * * *"
             Jobs.reschedule( job_str )
         })

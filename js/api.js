@@ -9,6 +9,8 @@ app.use(express.json()) // for parsing application/json
 app.use(express.urlencoded({ extended: true })) // for parsing application/x-www-form-urlencoded
 
 const Reddit  = require("./download_posts_reddit");
+const DatabaseReddit = require("./database_posts_reddit")
+
 const Jobs = require('./schedule');
 
 app.get('/subreddit', (req, res) => {
@@ -58,10 +60,35 @@ app.get('/configjob', (req, res) => {
 /**** JOBS ***/
 
 /*** TAGS **/
-app.get('/tags', (req, res) => {
-  res.send( Reddit.buscarTodasTagsIQDB(req.query.filtro) )
+app.get('/tags', async (req, res) => {
+  res.send( await Reddit.buscarTodasTagsIQDB(req.query.filtro) )
+})
+
+app.post('/tag', (req, res) => {
+  const json = req.body
+  DatabaseReddit.saveTag(json)
+  res.send( {"o":"0"} )
+})
+
+app.get('/tag-urls', async (req, res) => {
+  res.send( await Reddit.buscarTodasUrlsTagIQDB(req.query.tag) )
+})
+app.post('/post_reddit', (req, res) => {
+  const json = req.body
+  DatabaseReddit.savePostReddit(json)
+  res.send( {"o":"0"} )
 })
 /*** TAGS **/
+
+//The 404 Route (ALWAYS Keep this as the last route)
+app.get('*', function(req, res){
+  res.send({"message": "Endpoint não encontrado!", "code": 502})
+});
+
+app.post('*', function(req, res){
+  res.send({"message": "Endpoint não encontrado!", "code": 502})
+});
+
 app.listen(port, () => {
     console.log(`API iniciada na porta ${port}`)
 })

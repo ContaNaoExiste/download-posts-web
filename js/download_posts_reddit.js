@@ -4,7 +4,19 @@ const path = require("path");
 const request = require('request').defaults({ encoding: null });
 const IQDB  = require("./iqdb");
 const { resolve } = require('path');
+const { json } = require('express');
+const { mysqlQuery, mysqlInsertQuery } = require('./connection/mysql');
 require('dotenv/config');
+const cliProgress = require('cli-progress');
+
+function createCliProgressContainer(){
+    // create new container
+    return new cliProgress.MultiBar({
+        clearOnComplete: false,
+        hideCursor: true,
+        format: ' {bar} | {filename} | {value}/{total}',
+    }, cliProgress.Presets.shades_grey);
+}
 
 let FILA_DOWNLOAD = [];
 let FILA_URL_DOWNLOAD = {}
@@ -31,30 +43,68 @@ function writeFileFromJson ( filePath , json ) {
     }
 }
 
+function validateURL(url){
+    if(url)
+        return url.split("&amp;").join("&")
+    
+    return null
+}
+function cloneObject(object, append){
+    let clone = Object.assign({}, object)
+    if(append){
+        clone = Object.assign(clone, append)
+    }
+    return clone
+}
+
 function extractedURLFromRedditData(data){
+    
+    const post_obj = {
+        url : null,
+        subreddit: data.subreddit,
+        created: data.created,
+        name: data.name,
+        subreddit_id: data.subreddit_id,
+        post_id: data.id
+    }
+
     try {
         let urls = [];
-
+        if( data.preview ){
+            if(data.crosspost_parent_list && data.crosspost_parent_list.length > 0){
+                data.crosspost_parent_list.forEach( (item) =>{
+                    let temp_url = extractedURLFromRedditData(item)
+                    if( temp_url instanceof Array){
+                        temp_url.forEach( result => {
+                            urls.push(result)
+                        })
+                    }else{
+                        urls.push( cloneObject(post_obj, temp_url))
+                    }
+                })
+                return urls;
+            }
+        }
         if(data.media && data.media.reddit_video){
-            return data.media.reddit_video.fallback_url;
+            return cloneObject(post_obj, {url: data.media.reddit_video.fallback_url});
         }
 
         if(data.media && data.media.type === "redgifs.com"){
-            data.url = data.media.oembed.thumbnail_url.replace("-mobile.jpg", ".mp4");
+            return cloneObject(post_obj, {url: data.media.oembed.thumbnail_url.replace("-mobile.jpg", ".mp4")});
         }
         
         let url = new URL( data.url);
         if( getExtension(url.pathname) === 'gifv'){
-            return data.url.replace(".gifv", ".mp4")
+            return cloneObject(post_obj, {url: data.url.replace(".gifv", ".mp4")});
         }
         
         if( getExtension(url.pathname) === 'gif'){
-            return data.url
+            return cloneObject(post_obj, {url: data.url});
         }
         
         if( data.media_metadata){
             Object.values(data.media_metadata).forEach( (item, index) =>{
-                urls.push({ url: "https://i.redd.it/" + item.id + getTypeExtensionFile( { mimeType: item.m}), name: data.name + " " + index})
+                urls.push(cloneObject(post_obj, {url: "https://i.redd.it/" + item.id + getTypeExtensionFile( { mimeType: item.m}), name: data.name + " " + index}))
             })
             return urls;
         }
@@ -62,45 +112,23 @@ function extractedURLFromRedditData(data){
         if( data.preview ){
             
             if(data.preview.reddit_video_preview){
-                return data.preview.reddit_video_preview.fallback_url;
+                return cloneObject(post_obj, {url: data.preview.reddit_video_preview.fallback_url});
             }
-
+            
             if(data.preview.images.length > 0){
                 data.preview.images.forEach( (item, index) =>{
-                    let url_obj = { 
-                        url: item.source.url.split("&amp;").join("&"), 
-                        name: data.name + " " + index
-                    }
-                    if( item.resolutions.length > 0){
-                        url_obj.url_iqdb = item.resolutions[0].url.split("&amp;").join("&")
-                    }
-                    urls.push(url_obj)
+                    urls.push(cloneObject(post_obj, {url: item.source.url, name: data.name + " " + index, url_iqdb:item.resolutions[0].url}))
                 })
                 return urls;
             }
         }
-
-        if(data.crosspost_parent_list && data.crosspost_parent_list.length > 0){
-            data.crosspost_parent_list.forEach( (item) =>{
-                
-                let temp_url = extractedURLFromRedditData(item)
-                if( temp_url instanceof Array){
-                    temp_url.forEach( result => {
-                        urls.push(result)
-                    })
-                }else{
-                    urls.push( {url: temp_url, name: item.name + " " + urls.length})
-                }
-            })
-            return urls;
-        }
-        
+       
     } catch (error) {
         if( process.env.DEBUG_ERROR === "true"){
             console.error("extractedURLFromRedditData", error)
         }
     }
-    return data.url;
+    return cloneObject(post_obj, {url: data.url})
 }
 
 function getTypeExtensionFile(data){
@@ -129,6 +157,8 @@ function getTypeExtensionFile(data){
 
 // you can send full url here
 function getExtension(filename) {
+    if( ! filename)
+        return null
     return filename.split('.').pop().split("?").shift();
 }
 
@@ -152,29 +182,171 @@ function removeInvalidCharacteresPath( stringToReplace ){
     return replaceAll(stringToReplace, "\"", "");
 }
 
-function addLogIQDBSearch(iqdb_best, download){
+async function addLogIQDBSearch(iqdb_best, download){
     let data = download.post.data
     let directory = __dirname + path.sep + ".database" + path.sep + "log_iqdb"
     if( ! fs.existsSync(directory)) fs.mkdirSync( directory)
     
-    if( data.crosspost_parent_list && data.crosspost_parent_list.length > 0)
-        directory += path.sep + data.crosspost_parent_list[0].subreddit
-    else
-        directory += path.sep + data.subreddit
-
+    directory += path.sep + (new Date(data.created * 1000).toLocaleDateString("pt-BR").split("/").join("-"))
     if( ! fs.existsSync(directory)) fs.mkdirSync( directory)
     
-    var pathFile = directory + path.sep + removeInvalidCharacteresPath( download.name) + ".json"
+    var pathFile = directory + path.sep + removeInvalidCharacteresPath( download.name).split(" ").join("") + ".sql"
     if( fs.existsSync(pathFile) ) fs.unlinkSync(pathFile)
+    const sql_idreddit = `(select idreddit from post_reddit where name = \'${data.name}\' and subreddit = \'${download.subreddit}\')`
+    const sql_idimage_reddit= `(select idimage_reddit from image_reddit inner join post_reddit on post_reddit.idreddit = image_reddit.idreddit where post_reddit.name = \'${data.name}\' and subreddit = \'${download.subreddit}\' and image_reddit.name=\'${download.name}\' )`
 
-    const json_completo = {
-        iqdb: iqdb_best,
-        reddit: data,
-        url: download.download,
-        url_iqdb: download.url_iqdb,
-        name: download.name
+    const json_completo  = {
+        post_reddit : {
+            "subreddit": download.subreddit,
+            "url": data.url,
+            "created": `FROM_UNIXTIME('${download.created}')`,
+            "name": data.name,
+            "subreddit_id": download.subreddit_id,
+            "post_id": download.post_id,        
+        },
+        image_reddit: {
+            "url": download.url,
+            "url_iqdb": download.url_iqdb,
+            "name": download.name,
+            "idreddit": sql_idreddit
+        },
+        image_iqdb:{
+            url_iqdb: download.url_iqdb,
+            idimage_reddit: sql_idimage_reddit,
+            idreddit: sql_idreddit
+        },
+        
+        iqdb_result: (iqdb_best.results || []).map((item, position)=>{
+            return {
+                "match": item.match,
+                "width": item.width,
+                "height": item.height,
+                "type": item.type,
+                "similarity": item.similarity,
+                "similarityPercentage": item.similarityPercentage,
+                "position" : position,
+                idimage_iqdb: `(select idimage_iqdb from image_iqdb where url_iqdb = \'${download.url_iqdb || download.url}\' )`,
+                idimage_reddit: sql_idimage_reddit,
+                idreddit: sql_idreddit,
+
+                iqdb_source: (item.sources || []).map(source=>{
+                    return {
+                        "service": source.service,
+                        "href": source.href,
+                        "fixed_href": source.fixedHref,
+                        idiqdb_result:`(select idiqdb_result from iqdb_result res inner join image_iqdb iqdb on res.idimage_iqdb = iqdb.idimage_iqdb where iqdb.url_iqdb = \'${download.url_iqdb || download.url}\' and res.position = ${position})`, 
+                        idimage_iqdb: `(select idimage_iqdb from image_iqdb where url_iqdb = \'${download.url_iqdb || download.url}\' )`,
+                        idimage_reddit: sql_idimage_reddit,
+                        idreddit: sql_idreddit,
+
+                    }
+                }),
+                
+                iqdb_tag: (item.thumbnail.tags || []).map(tag =>{
+                    return {
+                        "tag": replaceAll(tag, "'",'\'')
+                    }
+                }),
+
+                iqdb_thumbnail: {
+                    "src": item.thumbnail.src,
+                    "fixed_src": item.thumbnail.fixedSrc,
+                    "rating": item.thumbnail.rating||`0`,
+                    "score": item.thumbnail.score||0,
+                    idiqdb_result:`(select idiqdb_result from iqdb_result res inner join image_iqdb iqdb on res.idimage_iqdb = iqdb.idimage_iqdb where iqdb.url_iqdb = \'${download.url_iqdb || download.url}\' and res.position = ${position})`, 
+                    idimage_iqdb: `(select idimage_iqdb from image_iqdb where url_iqdb = \'${download.url_iqdb || download.url}\' )`,
+                    idimage_reddit: sql_idimage_reddit,
+                    idreddit: sql_idreddit,
+                    
+                    iqdb_result_tag : (item.thumbnail.tags || []).map(tag =>{
+                        return {
+                            idtag: `(select idtag FROM iqdb_tag WHERE tag = \'${ replaceAll(tag, "'",'\\\'')}\')`,
+                            
+                            idiqdb_thumbnail: `(select idiqdb_thumbnail from iqdb_thumbnail thu inner join iqdb_result res on thu.idiqdb_result =res.idiqdb_result inner join image_iqdb iqdb on thu.idimage_iqdb =iqdb.idimage_iqdb where iqdb.url_iqdb = \'${download.url_iqdb || download.url}\' and res.position = ${position})`, 
+                            idiqdb_result:`(select idiqdb_result from iqdb_result res inner join image_iqdb iqdb on res.idimage_iqdb = iqdb.idimage_iqdb where iqdb.url_iqdb = \'${download.url_iqdb || download.url}\' and res.position = ${position})`, 
+                            idimage_iqdb: `(select idimage_iqdb from image_iqdb where url_iqdb = \'${download.url_iqdb || download.url}\' )`,
+                            
+                            idimage_reddit: sql_idimage_reddit,
+                            idreddit: sql_idreddit
+
+                            
+                        }
+                    })
+                }
+            }
+        })
     }
-    fs.writeFileSync(pathFile, JSON.stringify(json_completo));    
+    const sql = generateSqlFromObject(json_completo)
+    let result = true
+    try {
+        //result = await mysqlInsertQuery(sql.join("\n"))
+        //if( ! result)
+            fs.writeFileSync(pathFile, "START TRANSACTION;\n" + sql.join("\n") + "\nCOMMIT; ");
+    } catch (error) {
+        fs.writeFileSync(pathFile, "START TRANSACTION;\n" + sql.join("\n") + "\nCOMMIT; ");
+        console.log(error);
+    }
+    return result
+}
+
+function generateFieldsInsert(array){
+    return array.map((item)=>{return (! item )? item: ("`" +  item+ "`" ) }).join(", ")
+}
+function generateValuesInsert(array){
+    return array.map((item)=>{return (! item || ! (  typeof item === 'string' ) || item.startsWith("(select") || item.startsWith("FROM_UNIXTIME("))? item: ("'" +  item.toString().split("'").join("\\'")+ "'" ) }).join(", ")
+}
+
+function generateSqlFromObject(json_completo){
+    let sqls = []
+
+    if( typeof json_completo !== 'object'){
+        return sqls
+    }
+    
+    Object.keys(json_completo).map( atributo =>{
+        if( Array.isArray(json_completo[atributo])){
+            json_completo[atributo].forEach(element => {
+                if( ! Array.isArray(element)){
+                    sqls = sqls.concat(generateSqlFromObject({ [atributo] : element}))   
+                }
+            });
+        }
+        else if( typeof json_completo[atributo] === 'object'){
+            const values = Object.values(json_completo[atributo])
+            const keys   = Object.keys(json_completo[atributo])
+            let sql_insert = keys.filter((key, index) =>{ return  ! ( values[index] instanceof Array || values[index] instanceof Object)})
+            let sql_values = values.filter((key, index) =>{ return  ! ( values[index] instanceof Array || values[index] instanceof Object)})
+            
+            if(sql_insert.length){
+                if( atributo === "iqdb_tag"){
+                    sqls.push(`INSERT INTO ${atributo} (${generateFieldsInsert(sql_insert)}) SELECT ${generateValuesInsert(sql_values)} where not exists (select idtag from iqdb_tag where tag = '${replaceAll(json_completo[atributo].tag, "'", "\'")}' );`)
+                }
+                else if( atributo === "post_reddit"){ 
+                    sqls.push(`INSERT INTO ${atributo} (${generateFieldsInsert(sql_insert)}) SELECT ${generateValuesInsert(sql_values)} where not exists (select idreddit from post_reddit where name = '${json_completo[atributo].name}' and subreddit = '${json_completo[atributo].subreddit}' );`)
+                }else{
+                    sqls.push(`INSERT INTO ${atributo} (${generateFieldsInsert(sql_insert)}) VALUES (${generateValuesInsert(sql_values)});`)
+                }
+            }
+
+            keys.filter((key, index) =>{ return ( values[index] instanceof Array)}).forEach(item=>{
+                json_item = json_completo[atributo][item]
+                if( Array.isArray(json_item)){
+                    json_item.forEach(element => {
+                        if( ! Array.isArray(element)){
+                            sqls = sqls.concat(generateSqlFromObject({ [item] : element}))
+                        }
+                    });
+                }
+            })
+            keys.filter((key, index) =>{ return  ( values[index] instanceof Object)}).forEach(item=>{
+                json_item = json_completo[atributo][item]
+                if( ! Array.isArray(json_item)){
+                    sqls = sqls.concat(generateSqlFromObject({ [item] : json_item}))
+                }
+            })
+        }
+    })
+    return sqls
 }
 
 function existInDirectoryIQDB(url, data, name){
@@ -193,77 +365,198 @@ function existInDirectoryIQDB(url, data, name){
 function getURLSearchIQDB(url, data){
     let name = url.split("/").pop().split(".").shift()
     if(data.media_metadata && data.media_metadata[name]){
-        return data.media_metadata[name].p[0].u.split("&amp;").join("&")
+        return data.media_metadata[name].p[0].u
     }
     return url
 }
 
-async function requestDowloadFileFromURL(download){
+function getOriginalURLIfExist(url, iqdb){
+    
+    let extensao = getExtension(url)
+    
+    if( iqdb.results ){
+        let result = iqdb.results[0]
+        let service = result.sources[0].service
+        if( service == "Danbooru"){
+            let hash = result.thumbnail.src.split("/").pop().split(".")[0]
+            let hash_1= hash.substring(0, 2)
+            let hash_2= hash.substring(2, 4)
+            return `https://cdn.donmai.us/original/${hash_1}/${hash_2}/${hash}.${extensao}`
+        }
+        if( service == "Yande.re"){
+            let hash = result.thumbnail.src.split("/").pop().split(".")[0]
+            let id= result.sources[0].href.split("/").pop()
+            let tags = result.thumbnail.tags.join(" ")
+            return `https://files.yande.re/image/${hash}/yande.re ${id} ${tags}.${extensao}`
+        }
 
+        if( service == "Konachan"){
+            let id= result.sources[0].href.split("/").pop()
+            let hash = result.thumbnail.src.split("/").pop().split(".")[0]
+            return `https://konachan.com/sample/${hash}/Konachan.com - ${id} sample.${extensao}`
+        }
+        if( service == "Gelbooru"){
+            let hash = result.thumbnail.src.split("/").pop().split(".")[0]
+            let hash_1= hash.substring(0, 2)
+            let hash_2= hash.substring(2, 4)
+            return `https://img3.gelbooru.com//images/${hash_1}/${hash_2}/${hash}.${extensao}`
+        }
+        if( service == "Anime-Pictures"){
+            let hash = result.thumbnail.src.split("/").pop().split(".")[0]
+            let hash_1= hash.substring(0, 3)
+            return `https://images.anime-pictures.net/${hash_1}/${hash}.${extensao}`
+        }
+    }
+    return url
+}
+function possuiTagsInvalidas( iqdb){
+    const TAGS_INVALIDAS = ['penis', 'sex', 'paizuri', 'multiple_penises', 'multiple_boys', 
+    'male_masturbation', 'futanari', 'futa with futa', 'futa_with_male', 'video', 'otoko_no_ko', 
+    'furry', 'femdom', 'bestiality', 'trap', 'animated_gif', 'animated']
+    const TAGS_INVALIDAS_OBJ = TAGS_INVALIDAS.reduce(function(result, item, index) {
+        result[item] = item
+        return result
+      }, {})
+    let achou = false;
+    if( iqdb.results ){
+        let result = iqdb.results[0]
+        if( result.thumbnail && result.thumbnail.tags){
+            result.thumbnail.tags.every(element =>{
+                if(element in TAGS_INVALIDAS_OBJ){
+                    achou = true
+                    return false
+                }
+                return true
+            })
+        }
+    }
+    return achou
+}
+async function requestDowloadFileFromURL(download, obj_progress){
+    let image_progress = null
+    if( process.env.ENABLE_BAR_PROGRESS === "true"){
+        if( obj_progress.image_progress )
+            obj_progress.multibar.remove(obj_progress.image_progress)
+        
+        image_progress = obj_progress.multibar.create(5, 0);
+        obj_progress.image_progress = image_progress
+    }
+    
     let url = download.download
     let name = download.name
     let data = download.post.data
     let url_iqdb = download.url_iqdb
+    let url_original = url
     if( ! url) return null
     if( process.env.ACCEPT_FORMAT_FILES && !(process.env.ACCEPT_FORMAT_FILES.includes( getExtension( url) )))
         return null
     
     try {
-        if(  existInDirectoryIQDB(url, data, name) )
-            return null
-        
         let iqdb_best = null
         try {
+            if( process.env.ENABLE_BAR_PROGRESS === "true")
+                image_progress.increment({filename: name + " Iniciando busca IQDB"})
+
             iqdb_best = await IQDB.search_best_match(url_iqdb)
-            if( iqdb_best){
-                addLogIQDBSearch(iqdb_best, download)
-            }    
+            if( ! iqdb_best)
+                return null // Não vai baixar se nao tiver IQDB
+            
+            if( possuiTagsInvalidas(iqdb_best))
+                return null
+
+            if(process.env.ENABLE_DOWNLOAD_URL_ORIGINAL === "true"){
+                url_original = getOriginalURLIfExist(url, iqdb_best)   
+            }
+            
+            if(LISTA_DOWNLOADED[url_original]){ //Se a  url ja foi usada entao nao salva o arquivo
+                return null
+            }
+            result = await addLogIQDBSearch(iqdb_best, download)
+            if( ! result )
+                return null
         } catch (error) {
-            console.log("Erro consulta IQDB: ",url_iqdb,  error);
-            iqdb_best = null
+            return null
         }
         
-        let directory = getPATH_DOWNLOAD_FILES()
-        if(iqdb_best) 
-            directory += path.sep + "iqdb"
-        else 
-            directory += path.sep + "geral"
+        if( process.env.ENABLE_BAR_PROGRESS === "true")
+            image_progress.increment({filename: name + " Conclusão da busca IQDB e Salvamento do Log"})
+        
+            let directory = getPATH_DOWNLOAD_FILES() + path.sep + (new Date(data.created * 1000).toLocaleDateString("pt-BR").split("/").join("-"))
         if( ! fs.existsSync(directory)) fs.mkdirSync( directory);
 
-        if( data.crosspost_parent_list && data.crosspost_parent_list.length > 0)
-            directory += path.sep + data.crosspost_parent_list[0].subreddit;
-        else
-            directory += path.sep + data.subreddit
-
+        directory += path.sep + download.subreddit
         if( ! fs.existsSync(directory)) fs.mkdirSync( directory);
-       
+
         var pathFile = directory + path.sep + removeInvalidCharacteresPath( name || data.name) + "." + getExtension(url);
         if( fs.existsSync(pathFile) ) return null; // Se existe não baixa de novo
-       
-
     } catch (error) {
         if( process.env.DEBUG_ERROR === "true"){
             console.error("requestDowloadFileFromURL", url, error);
         }
     }
-    return new Promise(function (resolve, reject) {
-        data.fullurl = url;
-        request.get(url, {headers:{"cookie": process.env.REDDIT_COOKIE} }, function( error, response, body){
 
-                if (!error && response.statusCode == 200) {
-                    try {
-                        if( ! fs.existsSync(pathFile)) fs.writeFileSync(pathFile, Buffer.from(body));    
-                        resolve(data);
-                    } catch (error) {
-                        reject(data)
-                        console.error(error.message)
-                    }
-                }else{
-                    resolve(data)
-                }
-            });
-        
-    });
+    let fileBuffer = null
+    
+    if( process.env.ENABLE_BAR_PROGRESS === "true")
+        image_progress.increment({filename: name + " Iniciando download do arquivo"})
+
+    if( url != url_original){
+        fileBuffer = await getBufferImage(url_original)
+        if( ! fileBuffer){
+            let extensao_ = getExtension(url_original)
+            url_original = replaceAll(url_original, "." + extensao_, (extensao_ === "png") ? ".jpg" : ".png") 
+            fileBuffer = await getBufferImage(url_original)
+        }
+
+        if( ! fileBuffer){
+            let extensao_ = getExtension(url_original)
+            url_original = replaceAll(url_original, "." + extensao_, ".jpeg") 
+            fileBuffer = await getBufferImage(url_original)
+        }
+    }
+    if( ! fileBuffer)
+        fileBuffer = await getBufferImage(url)
+
+    if( fileBuffer ){
+        if( process.env.ENABLE_BAR_PROGRESS === "true"){
+            if( ! obj_progress.arquivos_salvos)
+                obj_progress.arquivos_salvos = 0
+            obj_progress.arquivos_salvos ++
+        }
+        return new Promise(function (resolve, reject) {
+            try {
+                if( ! fs.existsSync(pathFile)) fs.writeFileSync(pathFile, fileBuffer)
+                if( process.env.ENABLE_BAR_PROGRESS === "true")
+                    image_progress.increment({filename: name + " Download concluído"})
+                resolve(data);
+            } catch (error) {
+                reject(data)
+                console.error(error.message)
+            }
+            if( process.env.ENABLE_BAR_PROGRESS === "true")
+                image_progress.increment({filename: name + " Finalização do download"})
+        });
+    }
+}
+
+let LISTA_DOWNLOADED = {}
+async function getBufferImage(url){
+    if( LISTA_DOWNLOADED[url])
+        return null
+    
+    LISTA_DOWNLOADED[url] = url
+    let retorno = null;
+    await new Promise(function (resolve, reject) {
+        request.get(url, {headers:{"cookie": process.env.REDDIT_COOKIE, "User-Agent": "PostmanRuntime/7.32.2"} }, function( error, response, body){
+            if (!error && response.statusCode == 200) {
+                retorno = Buffer.from(body);
+            }
+            resolve(retorno)
+        });
+    }).then((data => {
+        retorno = data
+    }));
+    return retorno
 }
 
 async function dowloadFileFromDataURL( data){
@@ -311,51 +604,77 @@ function addFilaDownload(children){
             url = [url]
         }
         url.forEach( ( item ) =>{
-            let download = item.url || item
-            
+            let download = validateURL(item.url)
             if( ! FILA_URL_DOWNLOAD[download]){
                 FILA_URL_DOWNLOAD[download] = download
                 if( process.env.ACCEPT_FORMAT_FILES && (process.env.ACCEPT_FORMAT_FILES.includes( getExtension( download ) ))){
-                    FILA_DOWNLOAD.push({
+                    FILA_DOWNLOAD.push(cloneObject(item, {
+                        "url": download,
                         "download": download,
-                        "name"  : item.name || children.data.name,
                         "post"  : children,
-                        "url_iqdb": getURLSearchIQDB( item.url_iqdb || download, children.data)
-                    })  
+                        "url_iqdb": validateURL(getURLSearchIQDB( item.url_iqdb || download, children.data))
+                    }))  
                 }
-            }  
+            }
         })
     }
 }
 
-async function processarFilaDownload(config, resolve, reject){
+async function processarFilaDownload(config, resolve, reject, obj_progress){
     if(FILA_DOWNLOAD.length == 0){
+        if( process.env.ENABLE_BAR_PROGRESS === "true"){
+            if( obj_progress.image_progress )
+                obj_progress.multibar.remove(obj_progress.image_progress)
+                
+            obj_progress.multibar.stop()
+
+            if(obj_progress.arquivos_salvos)
+                console.log("Foram baixados: ", obj_progress.arquivos_salvos, " arquivos!");
+        }
+        
         resolve()
     }
     if( FILA_DOWNLOAD.length){
         let element = FILA_DOWNLOAD.shift()
-        requestDowloadFileFromURL( element ).finally(()=>{
+        
+        if( process.env.ENABLE_BAR_PROGRESS === "true"){
+            if(obj_progress.fila_download_progress)
+                obj_progress.fila_download_progress.increment({filename: element.post.data.name});
+        }
+        
+        
+            requestDowloadFileFromURL( element , obj_progress).finally(()=>{
             if( ! config.url_params){
                 config.url_params = {};
             }
             config.url_params.before = element.post.data.name;
             saveInfoReddit( config.subreddit, config)    
-            processarFilaDownload(config, resolve, reject)
+            processarFilaDownload(config, resolve, reject, obj_progress)
         })
     }
 }
 
 async function setContentThenGoogleDrive( config, data){
+    
     if( data.data && data.data.children ){
         data.data.children.reverse().forEach(children => {
             addFilaDownload(children)
         })
     }
-
-    return new Promise(function (resolve, reject) {
-        console.log("Será feito o download de " + FILA_DOWNLOAD.length + " arquivos!!");
-        processarFilaDownload(config, resolve, reject)
-    })
+    if( FILA_DOWNLOAD.length > 0){
+        let multibar = {}
+        let fila_download_progress = {}
+        if( process.env.ENABLE_BAR_PROGRESS === "true"){
+            multibar = createCliProgressContainer()
+            fila_download_progress = multibar.create(FILA_DOWNLOAD.length, 0);
+        }
+                
+        return new Promise(function (resolve, reject) {
+            console.log("Será feito o download de ", FILA_DOWNLOAD.length , " arquivos!!");
+            processarFilaDownload(config, resolve, reject, { multibar: multibar, fila_download_progress: fila_download_progress})
+        })
+    }
+    
 }
 
 function saveInfoReddit( reddit, value){
@@ -462,7 +781,8 @@ async function requestURLReddit( url, config, callback, last_url){
             requestURLReddit( next_url, config, callback, url);
         });
     }
-    request.get(url.href, {headers:{"cookie": process.env.REDDIT_COOKIE} }, ( error, response, body)=>{
+
+    request.get(url.href, {headers:{"cookie": process.env.REDDIT_COOKIE, "User-Agent": process.env.REDDIT_USER_AGENT} }, ( error, response, body)=>{
         if (!error && response.statusCode == 200) {
             data = JSON.parse(Buffer.from(body).toString('utf8'));
             if( data.data.children && data.data.children.length > 0){
@@ -473,6 +793,14 @@ async function requestURLReddit( url, config, callback, last_url){
                     requestURLReddit( next_url, config, callback, url);
                 });
             }
+        }else{
+            try {
+                data = Buffer.from(body).toString('utf8');
+                console.log(data);    
+            } catch (error) { }
+            
+            console.log(error,  " error ",response.statusCode, " response.statusCode");
+            callback(config, {})
         }
     });
 }
@@ -684,7 +1012,7 @@ function removeFilesDuplicate(){
 }
 
 function buscarLocalDatabaseReddits( filtro ){
-    let directory_files = path.resolve(__dirname, ".database", process.env.PATH_DOWNLOAD_FILES, "iqdb");
+    let directory_files = path.resolve(__dirname, ".database", process.env.PATH_DOWNLOAD_FILES, "16-03-2023");
 
     let applets = [];
     let totais = { subreddits: 0, files: 0};
@@ -749,62 +1077,59 @@ function chunkArray(arr, len) {
     return chunks;
 }
 
-function buscarTodasTagsIQDB(filtro){
-    const TAGS_IQDB = {}
-    let directory_files = path.resolve(__dirname, ".database", "log_iqdb");
-    try {
-      let folders = fs.readdirSync( directory_files);
-      if( ! filtro)
-        filtro = "ZettaiRyouiki"
-    
-      if(filtro){
-        folders = folders.filter( (value)=>{ return value.toUpperCase().match( filtro.toUpperCase() )} );
-    }
-      if( folders.length ){
-        chunkArray(folders.reverse(), 50)[0].forEach(element => {
-            let files = fs.readdirSync( path.resolve(directory_files, element));
-            files.forEach(file => {
-                const rawdata = fs.readFileSync( path.resolve(directory_files, element, file))
-                const json = JSON.parse(rawdata)
+async function buscarTodasTagsIQDB(filtro){
+    const sql = `SELECT tag.idtag, tag.tag, count(tag.idtag) as 'total' from post_reddit as post
+    left join image_reddit img_redd on post.idreddit = img_redd.idreddit
+    left join image_iqdb img_iqdb on post.idreddit = img_iqdb.idreddit and img_iqdb.idimage_reddit = img_redd.idimage_reddit
+    left join iqdb_result img_result on post.idreddit = img_result.idreddit and img_iqdb.idimage_iqdb = img_result.idimage_iqdb and img_result.idimage_reddit = img_redd.idimage_reddit
+    left join iqdb_thumbnail img_thumb on post.idreddit = img_thumb.idreddit and img_iqdb.idimage_iqdb = img_thumb.idimage_iqdb and img_thumb.idimage_reddit = img_redd.idimage_reddit and img_thumb.idiqdb_result = img_result.idiqdb_result
+    left join iqdb_result_tag img_result_tag on post.idreddit = img_result_tag.idreddit and img_iqdb.idimage_iqdb = img_result_tag.idimage_iqdb and img_result_tag.idimage_reddit = img_redd.idimage_reddit and img_result_tag.idiqdb_result = img_result.idiqdb_result and img_result_tag.idiqdb_thumbnail = img_thumb.idiqdb_thumbnail
+    left join iqdb_tag tag on img_result_tag.idtag = tag.idtag
+    where 
+    img_result.match in ('best')
+    and img_result.type in ('safe')
+    group by tag.idtag
+    order by count(tag.idtag) desc`
 
-                if (json.iqdb && json.iqdb.results) {
-                    const tags = json.iqdb.results[0].thumbnail.tags
-                    if( tags){
-                        tags.forEach(tag => {
-                            if(! TAGS_IQDB[tag]){
-                                TAGS_IQDB[tag] ={
-                                    total: 0,
-                                    tag: tag,
-                                    urls: [],
-                                    urls_iqdb: [],
-                                    names: []
-                                }
-                            }
-                            TAGS_IQDB[tag].total ++;
-                            TAGS_IQDB[tag].urls.push(json.url);
-                            TAGS_IQDB[tag].urls_iqdb.push(json.url_iqdb || json.iqdb.results[0].thumbnail.fixedSrc);
-                            TAGS_IQDB[tag].names.push(json.name);
-                        });
-                    }
-                }
-            }); 
-        });
-      }
-    } catch (error) {
-        console.log(error );
+    sql_count = `SELECT count(*) as total from (${sql}) as result`
+
+    const count = await mysqlQuery(sql_count) 
+    const data = {
+        tags: await mysqlQuery(sql + ' limit 0, 100'),
+        total: (count.length ? count[0].total : 0)
     }
-    
-    return {
-        tags: chunkArray(Object.values(TAGS_IQDB).sort((a, b) =>{return a.total - b.total}).reverse(), 20)[0],
-        total: Object.values(TAGS_IQDB).length
-    }
+    return data
 }
 
+async function buscarTodasUrlsTagIQDB(tag){
+    sql = `SELECT img_redd.url, post.name, post.subreddit, tag.tag from post_reddit as post
+    left join image_reddit img_redd on post.idreddit = img_redd.idreddit
+    left join image_iqdb img_iqdb on post.idreddit = img_iqdb.idreddit and img_iqdb.idimage_reddit = img_redd.idimage_reddit
+    left join iqdb_result img_result on post.idreddit = img_result.idreddit and img_iqdb.idimage_iqdb = img_result.idimage_iqdb and img_result.idimage_reddit = img_redd.idimage_reddit
+    left join iqdb_thumbnail img_thumb on post.idreddit = img_thumb.idreddit and img_iqdb.idimage_iqdb = img_thumb.idimage_iqdb and img_thumb.idimage_reddit = img_redd.idimage_reddit and img_thumb.idiqdb_result = img_result.idiqdb_result
+    left join iqdb_result_tag img_result_tag on post.idreddit = img_result_tag.idreddit and img_iqdb.idimage_iqdb = img_result_tag.idimage_iqdb and img_result_tag.idimage_reddit = img_redd.idimage_reddit and img_result_tag.idiqdb_result = img_result.idiqdb_result and img_result_tag.idiqdb_thumbnail = img_thumb.idiqdb_thumbnail
+    left join iqdb_tag tag on img_result_tag.idtag = tag.idtag
+    where 
+    img_result.match in ('best')
+    and img_result.type in ('safe')
+    and tag.tag = '${tag}'
+    group by img_redd.url `
+    
+    sql_count = `SELECT count(*) as total from (${sql}) as result`
+    const count = await mysqlQuery(sql_count) 
+    const data = {
+        urls: await mysqlQuery(sql + ' limit 0, 100'),
+        total: (count.length ? count[0].total : 0)
+    }
+    
+    return data
+}
 module.exports = {
     buscarPostsReddit,
     buscarLocalDatabaseReddits,
     uploadGoogleDriveByJson,
     removeFilesDuplicate,
     buscarTodosPostReddit,
+    buscarTodasUrlsTagIQDB,
     buscarTodasTagsIQDB
 }
