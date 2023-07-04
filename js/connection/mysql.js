@@ -37,13 +37,13 @@ function mysqlInsertQuery(sql){
         connection.query(sql, function(err, rows, fields) {
             
             if (err){
-                //console.log("err", err);
+                console.log("err", err, sql);
                 console.log("Rollback ");
                 connection.rollback()
                 connection.end()
                 resolve( null);
             } else{
-                console.log("Commit ");
+                //console.log("Commit ");
                 connection.commit()
                 connection.end()
                 resolve( rows);

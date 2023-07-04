@@ -19,6 +19,7 @@ import ImageListItemBar from '@mui/material/ImageListItemBar';
 import IconButton from '@mui/material/IconButton';
 
 function consultarUrlFromTag(setUrls, tag){
+    setUrls([])
     let urls = []
     try {
         //React.useEffect(() => {
@@ -46,8 +47,8 @@ function consultarTags(setTags, filtro){
 }
 
 function consultarTagsBtn(setTags, filtro){
+    setTags([])
     try {
-        setTags("")
         fetch("http://localhost:3050/tags" + ( filtro ? "?filtro="+filtro: ""))
         .then((res) => res.json())
         .then((data) => setTags(data));
@@ -92,14 +93,14 @@ export default function TagsIQDB() {
             </Box>
 
             <Box component="form" sx={{ '& > :not(style)': { m: 1, width: '100%' }, }}  autoComplete="off" >
-                <Grid container spacing={3}>
+                <Grid container >
 
                     { ! tags? "Carregando..." : 
                         tags && (! tags.tags || tags.tags.length == 0) ? "Não foi encontrado registros.":
                         tags.tags.map( item => {
                             return (
                                 <Grid item xs="auto">
-                                    <Card sx={{ minWidth: 275 }}>
+                                    <Card sx={{ minWidth: 700 }}>
                                         <CardContent>
                                             <Typography sx={{ fontSize: 14 }} color="text.secondary.strong" gutterBottom>
                                                 {item.tag}
@@ -116,7 +117,7 @@ export default function TagsIQDB() {
                                                     <Typography>URLs</Typography>
                                                 </AccordionSummary>
                                                 <AccordionDetails>
-                                               <ImageList sx={{ width: 250, height: 225 }} cols={2} rowHeight={164}>
+                                               <ImageList sx={{ width: 690, height: 690 }} cols={2} rowHeight={164}>
                                             {
                                                 
                                                 (urls.urls || []).map( (url, index) =>{

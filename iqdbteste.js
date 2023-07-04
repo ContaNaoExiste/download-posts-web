@@ -104,7 +104,7 @@ async function main(){
     console.log(getHashSumFromFile(path.resolve("t3_14ez3zk 2.jpg")) );*/
 
     //"21-06-2023 - Copia"
-    INPUT_path_to_your_images = path.resolve("js", ".database", "reddit_files", "full")
+    /*INPUT_path_to_your_images = path.resolve("js", ".database", "reddit_files", "full")
     const OUTPUT_path = path.resolve("js", ".database", "reddit_files", "compress") + "\\";
     let pastas = fs.readdirSync(INPUT_path_to_your_images, {withFileTypes: true});
     pastas.forEach(pasta => {  
@@ -119,7 +119,7 @@ async function main(){
                 //console.log(arquivo);
             });
         }
-    });
+    });*/
 /* INPUT_path_to_your_images = path.resolve("js", ".database", "reddit_files", "full", "\**") + path.sep + "*.{jpg,JPG,jpeg,JPEG,png,svg,gif}";
 const OUTPUT_path = path.resolve("js", ".database", "reddit_files", "compress") + "\\";
 const compression = 60
