@@ -1,0 +1,6 @@
+@import url("main.css");
+
+.card {
+    background-color: var(--main-bg-color);
+    border: none;
+}

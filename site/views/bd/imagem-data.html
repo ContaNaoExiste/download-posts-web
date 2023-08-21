@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <title>Comandos - {{it.APP_NAME}}</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="{{it.APP_ICON}}">
+    <link rel="stylesheet" type="text/css" href="/css/imagem-data.css">
+</head>
+
+<body> 
+    {{@includeFile('../header.html', it) /}}
+
+    <div>
+        <h1 class="title">Lista de Tags Disponíveis</h1>
+    </div>
+    <div>
+        <div class="row">
+            <div class="col-sm-2">
+                <div class="accordion accordion-flush" id="accordionFlushExample">
+                    <div class="accordion-item">
+                      <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseOne" aria-expanded="false" aria-controls="flush-collapseOne">
+                          Tags
+                        </button>
+                      </h2>
+                      <div id="flush-collapseOne" class="accordion-collapse collapse show" data-bs-parent="#accordionFlushExample">
+                        <div class="accordion-body">
+                            <ul class="list-group">
+                                {{@each(it.imagem.tags) => figurinha}}
+                                <li class="list-group-item">
+                                    <div class='grid-item'>
+                                    
+                                        <div class='div-image'>
+                                            <a class="break-word" href="/bd/bd-tag/imagens/{{figurinha.idtag}}">{{figurinha.descricao}}</a>
+                                        </div>
+                                    </div>
+                                </li>
+                                
+                                {{/each}}
+                        
+                            </ul>
+                        </div>
+                      </div>
+                    </div>
+                </div>        
+            </div>
+
+            <div class="col-sm-8">
+                ​<picture>
+                    <img src="{{it.imagem.url}}" class="image img-fluid" alt="{{it.imagem.name}}" width="{{it.imagem.width}}" height="{{it.imagem.height}}" >
+                </picture>
+            </div>
+            <div class="col-sm-2">
+                <div class="accordion accordion-flush" id="accordionReddit">
+                    <div class="accordion-item">
+                      <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseReddit" aria-expanded="false" aria-controls="flush-collapseReddit">
+                          Reddit Posts
+                        </button>
+                      </h2>
+                      <div id="flush-collapseReddit" class="accordion-collapse collapse show" data-bs-parent="#accordionReddit">
+                        <div class="accordion-body">
+                            <ul class="list-group">
+                                {{@each(it.imagem.reddit) => figurinha}}
+                                <li class="list-group-item">
+                                    <div>
+                                        <span>
+                                            <a href="https://www.reddit.com/r/{{figurinha.subreddit}}" target="_blank">{{figurinha.subreddit}}</a>
+                                        </span>
+                                        <span>
+                                            <a href="https://www.reddit.com/r/{{figurinha.subreddit}}/comments/{{figurinha.name.substr(3)}}" target="_blank">{{figurinha.name}}</a>
+                                        </span>
+                                        <span>{{figurinha.files}} Fotos</span>
+                                    </div>
+                                </li>
+                                
+                                {{/each}}
+                        
+                            </ul>
+                        </div>
+                      </div>
+                    </div>
+                </div>        
+            </div>
+        </div>
+    </div>
+</body>
+
+<script type="text/javascript" src="/js/comandos.js"></script>
+</html>

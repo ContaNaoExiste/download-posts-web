@@ -93,14 +93,14 @@ export default function TagsIQDB() {
             </Box>
 
             <Box component="form" sx={{ '& > :not(style)': { m: 1, width: '100%' }, }}  autoComplete="off" >
-                <Grid container >
+                <Grid container sx={{ width: '100%' }}>
 
                     { ! tags? "Carregando..." : 
                         tags && (! tags.tags || tags.tags.length == 0) ? "Não foi encontrado registros.":
                         tags.tags.map( item => {
                             return (
-                                <Grid item xs="auto">
-                                    <Card sx={{ minWidth: 700 }}>
+                                <Grid item xs="auto" sx={{ width: '100%' }}>
+                                    <Card sx={{ width: 1500 }}>
                                         <CardContent>
                                             <Typography sx={{ fontSize: 14 }} color="text.secondary.strong" gutterBottom>
                                                 {item.tag}
@@ -112,17 +112,17 @@ export default function TagsIQDB() {
 
                                             
                                             <Button variant="contained" onClick={() => { consultarUrlFromTag(setUrls, item.tag);}}>Consultar</Button>
-                                            <Accordion>
+                                            <Accordion  sx={{ width: '100%' }}>
                                                 <AccordionSummary aria-controls="panel1a-content" id="panel1a-header" >
                                                     <Typography>URLs</Typography>
                                                 </AccordionSummary>
-                                                <AccordionDetails>
-                                               <ImageList sx={{ width: 690, height: 690 }} cols={2} rowHeight={164}>
+                                                <AccordionDetails sx={{ width: '100%' }}>
+                                               <ImageList sx={{ width: 'auto', height: 540 }} cols={2} rowHeight={'auto'}>
                                             {
                                                 
                                                 (urls.urls || []).map( (url, index) =>{
                                                 return (
-                                                    <ImageListItem key={url.tag}>
+                                                    <ImageListItem  sx={{ width: '100%' }} key={url.tag}>
                                                         <img
                                                             src={`${url.url}`}
                                                             srcSet={`${url.url}`}

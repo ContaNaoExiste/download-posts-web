@@ -7,6 +7,20 @@ const crypto = require("crypto");
 var cmd=require('node-cmd');
 
 async function main(){
+    
+    const result = await IQDB.search_iqdb("https://cdn.donmai.us/original/45/98/459883e20179f96241130e071c6156c5.png")
+    console.log(JSON.stringify(result));
+    /*let filepath = path.resolve("js", ".database", "reddit_tempfiles", "3_1539037339938435073.jpg")
+    let filebuffer = fs.readFileSync(filepath)
+    //console.log(filebuffer, filepath);
+    await request.get(`http://localhost:6969/iqdb?file=${filepath}`, (error, response, body)=>{
+        console.log(response.statusCode);
+        if( ! error && response.statusCode == 200){
+
+            console.log(JSON.parse(Buffer.from(body).toString()), " result ");
+        }
+    }) 
+    console.log("Oloco");
 /*
 // YANDE.RE
     const result = await IQDB.search_iqdb("https://i.redd.it/v763nkbc1x5b1.jpg")

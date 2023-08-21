@@ -11,8 +11,8 @@ function main(params) {
     Jobs.startJob(job_str, ()=>{
         console.log('Rodou a consulta!', new Date().toLocaleTimeString("pt-BR"));
         Reddit.buscarPostsReddit("new").then(()=>{ }).finally(() => {
-            console.log('Removeu os Duplicados', new Date().toLocaleTimeString("pt-BR"))
-            Reddit.removeFilesDuplicate()
+            console.log('Terminou a execução ', new Date().toLocaleTimeString("pt-BR"))
+            //Reddit.removeFilesDuplicate()
 
             let data_now =  new Date();
             data_now = new Date(data_now.getTime() + 1 * 60 * 1000)

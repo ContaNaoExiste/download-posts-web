@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <title>Imagens - {{it.APP_NAME}}</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="{{it.APP_ICON}}">
+    <link rel="stylesheet" type="text/css" href="/css/comandos.css">
+</head>
+<body>
+    {{@includeFile('../header.html', it) /}}
+
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">TAG <u>{{it.imagens.descricao}}</u></h5>
+        <h6 class="card-subtitle mb-2 text-muted">{{it.imagens.total}} imagens</h6>
+      </div>
+    </div>
+
+    <div class="search">
+        <input class="form-control" type="text" placeholder="Search" id="input-search" name="input-search">
+    </div>
+    
+    {{@includeFile('../page-navigation.html', it) /}}
+    
+    <div div class="grid" id="div_imagens">
+        {{@each(it.imagens.imagens) => figurinha}}
+        <div class='grid-item'>
+            
+            <a href="{{figurinha.url}}" target="_blank"> {{figurinha.name}}</a>
+            <div class='div-image'>
+                <img class="image" src="{{figurinha.crop}}" alt="{{figurinha.name}}" srcset="" loading="lazy"/>
+                <label class="d-none">{{figurinha.url}}</label>
+                
+                <a href="/bd/imagem/{{figurinha.idimagem}}"> Detalhes</a>
+            </div>
+        </div>
+        {{/each}}
+    </div>
+
+    {{@includeFile('../page-navigation.html', it) /}}
+    
+</body>
+    <script type="text/javascript" src="/js/comandos.js"></script>
+</html>

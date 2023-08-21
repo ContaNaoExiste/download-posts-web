@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <title>Comandos - {{it.APP_NAME}}</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="{{it.APP_ICON}}">
+    <link rel="stylesheet" type="text/css" href="/css/bg-tags.css">
+</head>
+
+<body> 
+    {{@includeFile('../header.html') /}}
+
+    <div>
+        <h1 class="title">Lista de Comandos Disponíveis</h1>
+    </div>
+    
+    <nav aria-label="Page navigation example">
+        <ul class="pagination">
+            {{@if(it.page > 1)}}
+                <li class="page-item">
+                    <a class="page-link" href="/bd/bd-tags/{{it.page-1}}" aria-label="Previous">
+                    <span aria-hidden="true">&laquo;</span>
+                    </a>
+                </li>
+            {{/if}}
+          
+
+            {{@each(it.pagination) => page}}
+                {{@if(it.page == page)}}
+                    <li class="page-item active" aria-current="page"><a class="page-link" href="/bd/bd-tags/{{page}}">{{page}}</a></li>
+                {{#else}}
+                    <li class="page-item"><a class="page-link" href="/bd/bd-tags/{{page}}">{{page}}</a></li>
+                {{/if}}
+                
+            {{/each}}
+          <li class="page-item">
+            <a class="page-link" href="/bd/bd-tags/{{it.page+1}}" aria-label="Next">
+              <span aria-hidden="true">&raquo;</span>
+            </a>
+          </li>
+        </ul>
+    </nav>
+    
+    <div div class="grid" id="div_imagens">
+        {{@each(it.bd_tags.tags) => tag}}
+        <div class='grid-item'>
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">{{tag.tag}}</h5>
+                    <p class="card-text">{{tag.total}} imagens</p>
+                    <a href="/bd/bd-tag/imagens/{{tag.idtag}}/1" class="btn btn-primary">Imagens</a>
+                </div>
+            </div>
+        </div>
+        {{/each}}
+
+    </div>
+    
+</body>
+
+<script type="text/javascript" src="/js/comandos.js"></script>
+</html>

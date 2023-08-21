@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <title>Comandos - {{it.APP_NAME}}</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="{{it.APP_ICON}}">
+    <link rel="stylesheet" type="text/css" href="/css/bg-tags.css">
+</head>
+
+<body> 
+    {{@includeFile('../header.html', it) /}}
+  
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title title">Lista de Tags Disponíveis</u></h5>
+            <h6 class="card-subtitle mb-2 text-muted">{{it.bd_tags.total}} Tags</h6>
+        </div>
+    </div>
+
+    <div class="search">
+        <form action="/bd/bd-tags/1">
+            <input class="form-control" type="text" placeholder="Search" id="input-search" name="input-search" value="{{it.input_search}}">
+            <button type="submit" >Pesquisar</button>
+        </form>    
+    </div>
+    {{@includeFile('../page-navigation.html', it) /}}
+
+    <div div class="grid" id="div_imagens">
+        {{@each(it.bd_tags.tags) => tag}}
+        <div class='grid-item'>
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">{{tag.tag}}</h5>
+                    <p class="card-text">{{tag.total}} imagens</p>
+                    <a href="/bd/bd-tag/imagens/{{tag.idtag}}/1" class="btn btn-primary">Imagens</a>
+                </div>
+            </div>
+        </div>
+        {{/each}}
+    </div>
+    {{@includeFile('../page-navigation.html', it) /}}
+    
+</body>
+
+<script type="text/javascript" src="/js/comandos.js"></script>
+</html>

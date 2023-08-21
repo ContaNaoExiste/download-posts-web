@@ -6,7 +6,7 @@ const IQDB  = require("./iqdb");
 const { mysqlQuery, mysqlInsertQuery } = require('./connection/mysql');
 require('dotenv/config');
 const cliProgress = require('cli-progress');
-const sizeOf = require('buffer-image-size');
+const sizeOf = require('probe-image-size');
 
 function createCliProgressContainer(){
     // create new container
@@ -171,11 +171,11 @@ function replaceAll(str, find, replace) {
 }
 
 function getDimensionFromFile(file){
-    return sizeOf(fs.readFileSync(file))
+    return sizeOf.sync(fs.readFileSync(file))
 }
 
 function getDimensionFromBuffer(buffer){
-    return sizeOf(buffer)
+    return sizeOf.sync(buffer)
 }
 
 function removeInvalidCharacteresPath( stringToReplace ){
@@ -194,33 +194,61 @@ async function addLogIQDBSearch(iqdb_best, download, url, filebuffer){
     let reddit_post = download.post.data
     let hashsum = getHashSumFromBuffer(filebuffer)
     let dimension = getDimensionFromBuffer(filebuffer)
-    result = await mysqlQuery(`SELECT * FROM imagem WHERE hashsum = '${hashsum}'`)
-    if(result.length > 0){
-        console.log("Achou essa imagem", hashsum, url);
-        return null
+    let best_result = iqdb_best.results[0]
+    
+    console.log("Pesquisando Imagem", url, " post ", reddit_post.id)
+
+    result = await mysqlQuery(`SELECT * FROM imagem WHERE hashsum = '${hashsum}' AND remover = 0`)
+    console.log("Encontrou ", result.length , " resultados");
+    if(result.length == 0){
+        sql_imagens = `INSERT INTO imagem (\`url\`, \`hashsum\`, \`height\`, \`width\`, \`post\`) VALUES ('${replaceAll(url, "'", "\\'")}', '${hashsum}', '${dimension.height}', '${dimension.width}', '${best_result.sources[0].fixedHref}');\n`
+        await mysqlInsertQuery(sql_imagens)
+    }else{
+        try {
+            sql_imagens = `UPDATE imagem SET \`height\` = '${dimension.height}', \`width\` = '${dimension.width}', \`post\` = '${best_result.sources[0].fixedHref}' WHERE hashsum = '${hashsum}'  AND remover = 0;\n`
+            await mysqlInsertQuery(sql_imagens)    
+        } catch (error) {}
+        
+        try {
+            sql_imagens = `UPDATE imagem SET \`url\` = '${replaceAll(url, "'", "\\'")}' WHERE hashsum = '${hashsum}'  AND remover = 0;\n`
+            await mysqlInsertQuery(sql_imagens)    
+        } catch (error) {}
     }
+
+    if( best_result.thumbnail && best_result.thumbnail.tags && best_result.thumbnail.tags.length > 0){
+        try {
+            sql_del_tags = `DELETE FROM imagem_tag WHERE idimagem = (SELECT idimagem FROM imagem WHERE hashsum = '${hashsum}' AND remover = 0 LIMIT 1) `
+            await mysqlInsertQuery(sql_del_tags)
+        } catch (error) {}
+        
+        //console.log(best_result.thumbnail.tags , " tags");
+        for(const tag of best_result.thumbnail.tags){
+            try {
+                sql_tags = `INSERT INTO tag (\`descricao\`) SELECT '${replaceAll(tag, "'", "\\'")}' WHERE NOT EXISTS (SELECT idtag FROM tag WHERE descricao = '${replaceAll(tag, "'", "\\'")}');\n`
+                await mysqlInsertQuery(sql_tags)        
+            } catch (error) {}
+            
+            try {
+                sql_imagens_tags = `INSERT INTO imagem_tag (\`idimagem\`, \`idtag\`) SELECT (SELECT idimagem FROM imagem WHERE hashsum = '${hashsum}' AND remover = 0 LIMIT 1) as idimagem,  (SELECT idtag FROM tag WHERE descricao = '${replaceAll(tag, "'", "\\'")}') as idtag;\n`
+                await mysqlInsertQuery(sql_imagens_tags)    
+            } catch (error) {}
+        }
+    }
+
     reddit_post.post_id = reddit_post.id
     result = await mysqlQuery(`select post_id from reddit_post where post_id = '${reddit_post.post_id}'`)
     if(result.length == 0){
-        sql_post = `INSERT INTO reddit_post (\`subreddit\`, \`post_url\`, \`created\`, \`name\`, \`subreddit_id\`, \`post_id\`) VALUES ('${reddit_post.subreddit}', '${reddit_post.url}', FROM_UNIXTIME('${reddit_post.created}'), '${reddit_post.name}', '${reddit_post.subreddit_id}', '${reddit_post.post_id}');\n`
-        await mysqlInsertQuery(sql_post)
+        try {
+            sql_post = `INSERT INTO reddit_post (\`subreddit\`, \`post_url\`, \`created\`, \`name\`, \`subreddit_id\`, \`post_id\`) VALUES ('${reddit_post.subreddit}', '${reddit_post.url}', FROM_UNIXTIME('${reddit_post.created}'), '${reddit_post.name}', '${reddit_post.subreddit_id}', '${reddit_post.post_id}');\n`
+            await mysqlInsertQuery(sql_post)   
+        } catch (error) {}
     }
 
-    sql_imagens = `INSERT INTO imagem (\`url\`, \`hashsum\`, \`height\`, \`width\`) VALUES ('${replaceAll(url, "'", "\\'")}', '${hashsum}', '${dimension.height}', '${dimension.width}');\n`
-    await mysqlInsertQuery(sql_imagens)
-    sql_reddit_imagens = `INSERT INTO reddit_imagem (\`idimagem\`, \`idreddit_post\`) SELECT (SELECT idimagem FROM imagem WHERE hashsum = '${hashsum}' limit 1) as idimagem,  (SELECT idreddit_post FROM reddit_post WHERE post_id = '${reddit_post.post_id}') as idreddit_post;\n`
-    await mysqlInsertQuery(sql_reddit_imagens)
-    
-    result = iqdb_best.results[0]
-    if( result.thumbnail && result.thumbnail.tags && result.thumbnail.tags.length > 0){
-        for(const tag of result.thumbnail.tags){
-            sql_tags = `INSERT INTO tag (\`descricao\`) SELECT '${replaceAll(tag, "'", "\\'")}' WHERE NOT EXISTS (SELECT idtag FROM tag WHERE descricao = '${replaceAll(tag, "'", "\\'")}');\n`
-            await mysqlInsertQuery(sql_tags)
-
-            sql_imagens_tags = `INSERT INTO imagem_tag (\`idimagem\`, \`idtag\`) SELECT (SELECT idimagem FROM imagem WHERE hashsum = '${hashsum}' limit 1) as idimagem,  (SELECT idtag FROM tag WHERE descricao = '${replaceAll(tag, "'", "\\'")}') as idtag;\n`
-            await mysqlInsertQuery(sql_imagens_tags)
-        }
-    }
+    try {
+        sql_reddit_imagens = `INSERT INTO reddit_imagem (\`idimagem\`, \`idreddit_post\`) SELECT (SELECT idimagem FROM imagem WHERE hashsum = '${hashsum}' AND remover = 0 limit 1) as idimagem,  (SELECT idreddit_post FROM reddit_post WHERE post_id = '${reddit_post.post_id}') as idreddit_post;\n`
+        await mysqlInsertQuery(sql_reddit_imagens)
+    } catch (error) {}
+   
     return true
 }
 
@@ -361,7 +389,6 @@ function possuiTagsInvalidas( iqdb){
                     achou = true
                     return false
                 }
-                return true
             })
         }
     }
@@ -427,33 +454,43 @@ async function requestDowloadFileFromURL(download, obj_progress){
         if( process.env.DEBUG_ERROR === "true"){
             console.error("requestDowloadFileFromURL", url, error);
         }
+        return null
     }
 
     let fileBuffer = null
     let url_final = ''
     if( process.env.ENABLE_BAR_PROGRESS === "true")
         image_progress.increment({filename: name + " Iniciando download do arquivo"})
-
     if( url != url_original){
-        url_final = url_original
-        fileBuffer = await getBufferImage(url_original)
-        if( ! fileBuffer){
+        if( await checkIfURLExist(url_original) ){
+            url_final = url_original
+        }
+        if( url_final == ''){
             let extensao_ = getExtension(url_original)
             url_original = replaceAll(url_original, "." + extensao_, (extensao_ === "png") ? ".jpg" : ".png") 
-            url_final = url_original
-            fileBuffer = await getBufferImage(url_original)
+            if(await checkIfURLExist(url_original) ){
+                url_final = url_original
+            }
         }
 
-        if( ! fileBuffer){
+        if( url_final == ''){
             let extensao_ = getExtension(url_original)
             url_original = replaceAll(url_original, "." + extensao_, ".jpeg") 
-            url_final = url_original
-            fileBuffer = await getBufferImage(url_original)
+            if(await checkIfURLExist(url_original) ){
+                url_final = url_original
+            }
         }
     }
-    if( ! fileBuffer){
-        url_final = url
-        fileBuffer = await getBufferImage(url)
+    //console.log(url_final, " Antes url_final ", url_original , "url_original");
+    if( url_final == ''){
+        if(await checkIfURLExist(url) ){
+            url_final = url
+        }
+    }
+
+    if(url_final != ''){
+        //console.log("Final url_final ", url_final);
+        fileBuffer = await getBufferImage(url_final)
     }
 
     if( fileBuffer ){
@@ -505,6 +542,22 @@ async function getBufferImage(url){
     return retorno
 }
 
+async function checkIfURLExist(url){
+    let retorno = null;
+    await new Promise(function (resolve, reject) {
+        request.head(url, {headers:{"cookie": process.env.REDDIT_COOKIE, "User-Agent": "PostmanRuntime/7.32.2"} }, function( error, response, body){
+            if(response && response.statusCode)
+                resolve(response.statusCode == 200)
+            else
+                resolve(false)
+        });
+    }).then((data => {
+        retorno = data
+    }));
+    return retorno
+}
+
+
 async function dowloadFileFromDataURL( data){
     return new Promise(function (resolve, reject) {
         requestDowloadFileFromURL( data).finally(()=>{
@@ -513,6 +566,27 @@ async function dowloadFileFromDataURL( data){
     });
 }
 
+async function getBufferImageByURL(url_original){
+    if( ! url_original)
+        return null
+
+    fileBuffer = await getBufferImage(url_original)
+    if( ! fileBuffer){
+        let extensao_ = getExtension(url_original)
+        url_original = replaceAll(url_original, "." + extensao_, (extensao_ === "png") ? ".jpg" : ".png") 
+        fileBuffer = await getBufferImage(url_original)
+    }
+
+    if( ! fileBuffer){
+        let extensao_ = getExtension(url_original)
+        url_original = replaceAll(url_original, "." + extensao_, ".jpeg") 
+        fileBuffer = await getBufferImage(url_original)
+    }
+    return {
+        fileBuffer : fileBuffer,
+        url: url_original
+    }
+}
 
 async function getInfoRedditByName( reddit ){
     try {
@@ -944,16 +1018,21 @@ function verifyAndRemoveDuplicateHashSum( path_file, posts){
  *  Caso seja arquivo, entao é feito a verificaçao do HashSum
 */
 function listFilesRemoveFilesDuplicate( path_folder, posts ){
-    files = fs.readdirSync(path_folder);
-    files.forEach( (file) =>{
-        const path_file = path_folder + path.sep + file;
-
-        if( fs.statSync( path_file ).isDirectory()){
-            listFilesRemoveFilesDuplicate(path_file, posts);
-        }else{
-            verifyAndRemoveDuplicateHashSum(path_file, posts);
-        }
-    })
+    try {
+        files = fs.readdirSync(path_folder);
+        files.forEach( (file) =>{
+            const path_file = path_folder + path.sep + file;
+    
+            if( fs.statSync( path_file ).isDirectory()){
+                listFilesRemoveFilesDuplicate(path_file, posts);
+            }else{
+                verifyAndRemoveDuplicateHashSum(path_file, posts);
+            }
+        })    
+    } catch (error) {
+        
+    }
+    
 }
 
 /** 
@@ -1028,11 +1107,11 @@ function chunkArray(arr, len) {
     while (i < n) {
         chunks.push(arr.slice(i, i += len));
     }
-
     return chunks;
 }
 
 async function buscarTodasTagsIQDB(filtro){
+    console.log(filtro, " filtro");
     const sql = `select tag.idtag, tag.descricao as 'tag', count(tag.idtag) as 'total' from tag 
         left join imagem_tag on imagem_tag.idtag = tag.idtag
         group by tag.idtag
@@ -1115,17 +1194,30 @@ async function buscarTodasUrlsTagIQDB(tag){
         urls: await mysqlQuery(sql + ' limit 0, 100'),
         total: (count.length ? count[0].total : 0)
     }*/
-    sql = `select tag.idtag, tag.descricao as 'tag', REGEXP_REPLACE(imagem.url, ' ', '%20') as 'url', imagem.hashsum as 'name' from tag 
-    left join imagem_tag on imagem_tag.idtag = tag.idtag
-    left join imagem on imagem.idimagem = imagem_tag.idimagem
-    where tag.descricao = '${tag}'
-    group by imagem.hashsum
-    order by imagem.idimagem desc`
+    if( tag ){
+        sql = `
+        select tag.idtag, tag.descricao as 'tag', REGEXP_REPLACE(imagem.url, ' ', '%20') as 'url', imagem.hashsum as 'name', (imagem.height / imagem.width) * 100 as 'porcent' from imagem 
+        left join imagem_tag on imagem.idimagem = imagem_tag.idimagem
+       left join tag on imagem_tag.idtag = tag.idtag
+       where imagem.height >= 1080
+       and imagem.width >= 1920
+       and imagem.width > imagem.height
+       and ((imagem.height / imagem.width) * 100) > 55
+       and ((imagem.height / imagem.width) * 100) < 60
+       and tag.idtag in ( select idtag from tag where tag.descricao = '${tag}')
+       order by imagem.idimagem desc`
+    }else {
+        sql = `
+            select REGEXP_REPLACE(imagem.url, ' ', '%20') as 'url', imagem.hashsum as 'name' from imagem 
+            group by hashsum
+            order by imagem.idimagem desc`
+    }
+    
     
     sql_count = `SELECT count(*) as total from (${sql}) as result`
     const count = await mysqlQuery(sql_count) 
     const data = {
-        urls: await mysqlQuery(sql + ' limit 0, 10'),
+        urls: await mysqlQuery(sql + ' limit 0, 50'),
         total: (count.length ? count[0].total : 0)
     }
    
@@ -1211,6 +1303,208 @@ async function buscarTodasUrlsTagIQDB(tag){
     
     return data
 }
+
+async function buscarTodasImagensBD(req){
+    
+    sql = `
+        select REGEXP_REPLACE(imagem.url, ' ', '%20') as 'url', imagem.hashsum as 'name', imagem.idimagem, imagem.width, imagem.height from imagem 
+        group by hashsum
+        order by imagem.idimagem desc`
+    
+    const limit = (req.params.page) ? ((req.params.page - 1) * 50) + ", 50 ": " 0, 50 " 
+    sql_count = `SELECT count(*) as total from (${sql}) as result`
+    const count = await mysqlQuery(sql_count) 
+    const data = {
+        urls: (await mysqlQuery(sql + ' limit ' + limit)).map((item => {item.crop = getCropUrlIfExist(item.url); return item})),
+        total: (count.length ? count[0].total : 0)
+    }
+    return data
+}
+
+async function buscarDadosImagemBD(req){
+    try {
+        sql = `
+        select REGEXP_REPLACE(imagem.url, ' ', '%20') as 'url', imagem.hashsum as 'name', imagem.idimagem, imagem.width, imagem.height from imagem 
+        WHERE imagem.idimagem = ${req.params.idimagem}
+        order by imagem.idimagem desc
+    `
+    sqltag = `
+        select tag.* from imagem 
+        left join imagem_tag on imagem_tag.idimagem = imagem.idimagem
+        left join tag on imagem_tag.idtag = tag.idtag
+        WHERE imagem.idimagem = ${req.params.idimagem}
+        order by tag.descricao ASC
+    `
+    sqlreddit = `
+        select * from reddit_post
+        left join reddit_imagem on reddit_imagem.idreddit_post = reddit_post.idreddit_post
+        where reddit_imagem.idimagem = ${req.params.idimagem}
+        order by reddit_post.idreddit_post desc
+    `
+    const data = (await mysqlQuery(sql))[0]
+    data.tags = await mysqlQuery(sqltag)
+    data.reddit = await mysqlQuery(sqlreddit)
+    return data
+    } catch (error) {
+        return {
+            imagem: {},
+            tags: [],
+            reddit: []
+        }    
+    }
+}
+
+async function buscarTodasTagsBD(req){
+    const input_search = req.query['input-search']
+    let where = ''
+    if( input_search)
+        where = `WHERE tag.descricao LIKE '%${input_search}%'`
+
+    const sql = `select tag.idtag, tag.descricao as 'tag', count(tag.idtag) as 'total' from tag 
+        left join imagem_tag on imagem_tag.idtag = tag.idtag
+        ${where}    
+        group by tag.idtag
+        order by count(tag.idtag) desc`
+
+    sql_count = `SELECT count(*) as total from (${sql}) as result`
+    
+    const limit = (req.params.page) ? ((req.params.page - 1) * 50) + ", 50 ": " 0, 50 " 
+
+    const count = await mysqlQuery(sql_count) 
+    const data = {
+        tags: await mysqlQuery(sql + ' limit ' + limit),
+        total: (count.length ? count[0].total : 0)
+    }
+    return data
+}
+
+async function buscarDadosTagBD(req){
+    try {
+        const sql = `select tag.* from tag 
+        where tag.idtag = ${req.params.idtag}
+        `
+    sqlimagens = `
+        select REGEXP_REPLACE(imagem.url, ' ', '%20') as 'url', imagem.hashsum as 'name', imagem.idimagem, imagem.width, imagem.height from imagem 
+        left join imagem_tag on imagem_tag.idimagem = imagem.idimagem
+        left join tag on imagem_tag.idtag = tag.idtag
+        WHERE tag.idtag = ${req.params.idtag}
+        order by imagem.idimagem DESC
+    `
+    const limit = (req.params.page) ? ((req.params.page - 1) * 50) + ", 50 ": " 0, 50 " 
+    
+    sql_count = `SELECT count(*) as total from (${sqlimagens}) as result`
+    const count = await mysqlQuery(sql_count) 
+
+    const data = (await mysqlQuery(sql))[0]
+    data.imagens = (await mysqlQuery(sqlimagens + ' limit ' + limit)).map((item => {item.crop = getCropUrlIfExist(item.url); return item}))
+    data.total= (count.length ? count[0].total : 0)
+    return data
+    } catch (error) {
+        console.log(error);
+        return {
+            imagem: {},
+            tags: []
+        }    
+    }
+}
+
+async function buscarTodosPostsRedditBD(req){
+    try {
+        const subreddit = req.params.subreddit
+        let where = ''
+        if( subreddit)
+            where = `WHERE reddit_post.subreddit = '${subreddit}'`
+
+        sql = `
+            select reddit_post.*, REGEXP_REPLACE(imagem.url, ' ', '%20') as 'url', imagem.idimagem, count(imagem.idimagem) as 'files' from reddit_post
+            inner join reddit_imagem on reddit_imagem.idreddit_post = reddit_post.idreddit_post
+            inner join imagem on reddit_imagem.idimagem = imagem.idimagem
+            ${where}
+            group by reddit_post.idreddit_post
+            order by reddit_post.idreddit_post desc
+        `    
+    sql_count = `SELECT count(*) as total from (${sql}) as result`
+    
+    const limit = (req.params.page) ? ((req.params.page - 1) * 50) + ", 50 ": " 0, 50 " 
+    const count = await mysqlQuery(sql_count)
+    const data = {
+        post: await mysqlQuery(sql + ' limit ' + limit),
+        total: (count.length ? count[0].total : 0)
+    }
+    return data
+    } catch (error) {
+        console.log(error);
+        return {
+            post: {},
+            tags: []
+        }    
+    }
+}
+
+async function buscarTodosRedditBD(req){
+    try {
+        const input_search = req.query['input-search']
+        let where = ''
+        if( input_search)
+            where = `WHERE reddit_post.subreddit LIKE '%${input_search}%'`
+
+        let sql = `select reddit_post.*, count(*) as 'total' from reddit_post
+            ${where}
+            group by reddit_post.subreddit
+            order by count(*) desc
+        `    
+        sql_count = `SELECT count(*) as total from (${sql}) as result`
+        
+        const limit = (req.params.page) ? ((req.params.page - 1) * 50) + ", 50 ": " 0, 50 " 
+
+        const count = await mysqlQuery(sql_count)
+        const data = {
+            post: await mysqlQuery(sql + ' limit ' + limit),
+            total: (count.length ? count[0].total : 0)
+        }
+        return data
+    } catch (error) {
+        return {
+            post: {},
+            tags: []
+        }    
+    }
+}
+
+function getCropUrlIfExist(url){
+    if(url.startsWith("https://cdn.donmai.us/")){
+        url_split = url.split("/")
+        hash = url_split.pop()
+        let hash_1= hash.substring(0, 2)
+        let hash_2= hash.substring(2, 4)
+        return `https://cdn.donmai.us/360x360/${hash_1}/${hash_2}/${hash.replace("png", "jpg").replace("jpeg", "jpg")}`
+    }
+        
+    if(url.startsWith("https://files.yande.re/image/")){
+        url_split = url.split("/")
+        hash = url_split[4]
+        let hash_1= hash.substring(0, 2)
+        let hash_2= hash.substring(2, 4)
+        return `https://assets.yande.re/data/preview/${hash_1}/${hash_2}/${hash}.jpg`
+    }
+    if(url.startsWith("https://konachan.com")){
+        url_split = url.split("/")
+        hash = url_split[4]
+        let hash_1= hash.substring(0, 2)
+        let hash_2= hash.substring(2, 4)
+        return `https://konachan.com/data/preview/${hash_1}/${hash_2}/${hash}.jpg`
+    }
+
+    if(url.startsWith("https://img3.gelbooru.com")){
+        url_split = url.split("/")
+        hash = url_split[7]
+        let hash_1= hash.substring(0, 2)
+        let hash_2= hash.substring(2, 4)
+        return `https://img3.gelbooru.com/thumbnails/${hash_1}/${hash_2}/thumbnail_${hash.replace("png", "jpg").replace("jpeg", "jpg")}`
+    }
+    return url
+}
+
 module.exports = {
     buscarPostsReddit,
     buscarLocalDatabaseReddits,
@@ -1225,5 +1519,14 @@ module.exports = {
     getBufferImage,
     getExtension,
     getHashSumFromBuffer,
-    possuiTagsInvalidas
+    possuiTagsInvalidas,
+    chunkArray,
+    getBufferImageByURL,
+    buscarTodasImagensBD,
+    buscarDadosImagemBD,
+    buscarTodasTagsBD,
+    buscarDadosTagBD,
+    buscarTodosPostsRedditBD,
+    buscarTodosRedditBD,
+    checkIfURLExist
 }

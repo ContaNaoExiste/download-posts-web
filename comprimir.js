@@ -1,7 +1,9 @@
 const { getHashSumFromBuffer, getHashSumFromFile } = require("./js/download_posts_reddit")
 const fs = require('fs');
 const path = require("path");
-const compressImages = require("compress-images")
+const compressImages = require("compress-images");
+const { compress_image } = require("./compress_image");
+const post = require('./js/download_posts_reddit');
 
 async function processamento(caminho){
     for(const file of fs.readdirSync(caminho)){
@@ -17,11 +19,47 @@ async function processamento(caminho){
     }
 }
 
+const getAllFiles = function(dirPath, arrayOfFiles) {
+  files = fs.readdirSync(dirPath)
 
+  arrayOfFiles = arrayOfFiles || []
+
+  files.forEach(function(file) {
+    const stats = fs.statSync(dirPath + "/" + file)
+    if (stats.isDirectory()) {
+      arrayOfFiles = getAllFiles(dirPath + "/" + file, arrayOfFiles)
+    } else {
+        if(stats.size > 7000000){
+            arrayOfFiles.push(path.join(dirPath, "/", file).split(__dirname)[1].substring(1))
+        }
+    }
+  })
+
+  return arrayOfFiles
+}
 function main(){
+    try {
+        const allFiles = getAllFiles(path.resolve(__dirname, "js", ".database", "reddit_files"))
+        console.log(allFiles.length);
+        for (const file of allFiles) {
+            //console.log(file);
+            try {
+             compress_image(file)   
+            } catch (error) {
+                console.log( file);
+            }
+        }    
+    } catch (error) {
+        
+    }
+    
+    //
+    
+
+    //console.log("Continuou o processamento");
     //processamento(path.resolve("js", ".database", "reddit_files_copia"))
-    sum = getHashSumFromFile(path.resolve("js", ".database", "reddit_tempfiles", "ed4d9675afb3e3b5334de7d3af78fe8b.jpg"))
-    console.log(sum);
+    /*sum = getHashSumFromFile(path.resolve("js", ".database", "reddit_tempfiles", "ed4d9675afb3e3b5334de7d3af78fe8b.jpg"))
+    console.log(sum);*/
 }
 
 function comprimirERenomearImagem(path_imagem, path_imagem_out){

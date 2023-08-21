@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <title>Imagens - {{it.APP_NAME}}</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="{{it.APP_ICON}}">
+    <link rel="stylesheet" type="text/css" href="/css/comandos.css">
+</head>
+<body>
+    {{@includeFile('../header.html', it) /}}
+
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">Posts Reddit</u></h5>
+        <h6 class="card-subtitle mb-2 text-muted">{{it.reddit.total}} Reddits</h6>
+      </div>
+    </div>
+
+    <div class="search">
+        <form action="/reddit/reddits/1">
+            <input class="form-control" type="text" placeholder="Search" id="input-search" name="input-search" value="{{it.input_search}}">
+            <button type="submit" >Pesquisar</button>
+        </form>    
+    </div>
+    
+    {{@includeFile('../page-navigation.html', it) /}}
+    
+    <div div class="grid" id="div_imagens">
+        {{@each(it.reddit.post) => figurinha}}
+        <div class='grid-item'>
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title title">{{figurinha.subreddit}}</u></h5>
+                    <h6 class="card-subtitle mb-2 text-muted">{{figurinha.total}} posts</h6>
+                    
+                    <a class="btn btn-primary" href="https://www.reddit.com/r/{{figurinha.subreddit}}/new" target="_blank">r/{{figurinha.subreddit}}</a>
+                </div>
+            </div>
+            
+            <div class='div-image' data-subreddit={{figurinha.subreddit}} data-url=https://www.reddit.com/r/{{figurinha.subreddit}}/about.json>
+                <label class="d-none">{{figurinha.post_url}}</label>
+                
+                <a class="btn btn-primary" href="/reddit/posts/{{figurinha.subreddit}}/1">Posts</a>
+            </div>
+        </div>
+        {{/each}}
+    </div>
+
+    {{@includeFile('../page-navigation.html', it) /}}
+    
+</body>
+    <script type="text/javascript" src="/js/reddit.js"></script>
+</html>

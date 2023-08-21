@@ -2,11 +2,12 @@ const fs = require('fs');
 const path = require("path");
 const post = require('./js/download_posts_reddit');
 const { func } = require('assert-plus');
-const sizeOf = require('buffer-image-size');
+const sizeOf = require('probe-image-size');
 const { mysqlInsertQuery, mysqlQuery } = require('./js/connection/mysql');
 const FindFiles = require('file-regex')
 const IQDB  = require("./js/iqdb");
 const compressImages = require("compress-images")
+const request = require('request').defaults({ encoding: null });
 
 const hash = {}
 /*function main(){
@@ -30,38 +31,51 @@ const hash = {}
     });
 }*/
 
-async function processamento(caminho){
-    for(const file of fs.readdirSync(caminho)){
-        const file_path = path.resolve(caminho, file)
-        if( fs.lstatSync(file_path).isDirectory()){
-            await processamento(file_path)
-        }else{
-            try {
-                await adcionarSQLBD(file_path);   
-            } catch (error) {
-                console.log(error);
-            }
+async function processamento(caminho, reverse, chunk){
+    let arquivos = fs.readdirSync(caminho)
+    
+    if( arquivos.length ==0){
+        try {
+         
+            fs.rmdirSync(caminho)   
+        } catch (error) {
+        console.log("error ", error);        
         }
+        return null;
+    }
+    if(reverse){
+        arquivos = arquivos.reverse()
+    }
+    if( chunk){
+        try {
+            arquivos = post.chunkArray(arquivos, Math.round(arquivos.length / 2))[0].reverse()   
+        } catch (error) {
+            
+        }
+    }
+    for(const file of arquivos){
+        try {
+            const file_path = path.resolve(caminho, file)
+            if( fs.lstatSync(file_path).isDirectory()){
+                await processamento(file_path, reverse, chunk)
+            }else{
+                try {
+                    await adcionarSQLBD(file_path);   
+                } catch (error) {
+                    console.log(error);
+                }
+            }
+        } catch (error) {}
     }
 }
 
 async function adcionarSQLBD(path_imagem){
+    let nova_sql = null
     let name = path_imagem.split("\\").pop().split(".")[0]
     name = post.replaceAll(name, " ", "") + ".sql"
-    
-    path_log_iqdb = path.resolve("js", ".database", "log_iqdb")
-    logs = await FindFiles(path_log_iqdb, name, 5);
-    path_log_iqdb_imagem = ""
-    nova_sql = null
-
-    if(logs.length > 0){
-        path_log_iqdb_imagem =path.resolve(logs[0].dir, logs[0].file)    
-    }
-    if( path_log_iqdb_imagem && fs.existsSync(path_log_iqdb_imagem)){
-        sql = fs.readFileSync(path_log_iqdb_imagem).toString()
-        data = quebrarSQL(sql, path_imagem)
-    }else{
-        data = await adcionarSQLBDByFile(path_imagem)
+    data = await adcionarSQLBDByFile(path_imagem)
+    if( ! data){
+        return null
     }
 
     nova_sql = await gerarNovaSql(data)
@@ -77,7 +91,7 @@ async function adcionarSQLBD(path_imagem){
         } catch (error) {
             console.log(error);
         }
-        console.log("Concluiiu o  database");
+        //console.log("Concluiiu o  database");
     }else{
         try {
             fs.renameSync(path_imagem, path.resolve("js", ".database", "reddit_tempfiles", path_imagem.split(path.sep).pop()))   
@@ -111,8 +125,25 @@ function comprimirERenomearImagem(path_imagem, path_imagem_out){
  async function main(){
     //post.removeFilesDuplicate()
 
-    path_reddit = path.resolve("js", ".database", "reddit_files", "hentai")
+    path_reddit = path.resolve("js", ".database", "reddit_files")
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
 
+    processamento(path_reddit, true)
+    processamento(path_reddit, false, true)
+    processamento(path_reddit, true, true)
     await processamento(path_reddit)
 }
 
@@ -160,11 +191,11 @@ function quebrarSQL(sql, path_imagem, imagem) {
 }
 
 function getDimensionFromFile(file){
-    return sizeOf(fs.readFileSync(file))
+    return sizeOf.sync(fs.readFileSync(file));
 }
 
 function getDimensionFromBuffer(buffer){
-    return sizeOf(buffer)
+    return sizeOf.sync(buffer)
 }
 
 async function gerarNovaSql(data){
@@ -192,10 +223,11 @@ async function gerarNovaSql(data){
         result = await mysqlQuery(`select * from imagem where url = ${element.url} OR hashsum = '${element.hashsum}'`)
         if(result && result.length > 0){
             encontrou = true
+            console.log("Achou essa imagem", element.hashsum, element.url);
         }
         sql_imagens = sql_imagens + `INSERT INTO imagem (\`url\`, \`hashsum\`, \`height\`, \`width\`) VALUES (${element.url}, '${element.hashsum}', ${element.height}, ${element.width});\n`
         if(data.reddit_post){
-            sql_reddit_imagens = sql_reddit_imagens + `INSERT INTO reddit_imagem (\`idimagem\`, \`idreddit_post\`) SELECT (SELECT idimagem FROM imagem WHERE hashsum = ${element.hashsum} limit 1) as idimagem,  (SELECT idreddit_post FROM reddit_post WHERE post_id = ${reddit_post.post_id}) as idreddit_post;\n`
+            sql_reddit_imagens = sql_reddit_imagens + `INSERT INTO reddit_imagem (\`idimagem\`, \`idreddit_post\`) SELECT (SELECT idimagem FROM imagem WHERE hashsum = '${element.hashsum}' limit 1) as idimagem,  (SELECT idreddit_post FROM reddit_post WHERE post_id = ${reddit_post.post_id}) as idreddit_post;\n`
         }
     }
 
@@ -206,7 +238,7 @@ async function gerarNovaSql(data){
         sql_tags = sql_tags + `INSERT INTO tag (\`descricao\`) SELECT ${tag} WHERE NOT EXISTS (SELECT idtag FROM tag WHERE descricao = ${tag});\n`
       
         data.imagens.forEach(element => {
-            sql_imagens_tags = sql_imagens_tags + `INSERT INTO imagem_tag (\`idimagem\`, \`idtag\`) SELECT (SELECT idimagem FROM imagem WHERE url = ${element.url}) as idimagem,  (SELECT idtag FROM tag WHERE descricao = ${tag}) as idtag;\n`
+            sql_imagens_tags = sql_imagens_tags + `INSERT INTO imagem_tag (\`idimagem\`, \`idtag\`) SELECT (SELECT idimagem FROM imagem WHERE hashsum = '${element.hashsum}') as idimagem,  (SELECT idtag FROM tag WHERE descricao = ${tag}) as idtag;\n`
         })
     });
     if( ! encontrou)
@@ -223,18 +255,38 @@ async function adcionarSQLBDByFile(path_imagem){
         return null
     }
     try {
-        iqdb_best = await IQDB.search_best_match(fs.readFileSync(path_imagem))    
+        iqdb_best = await getIqdbResult(path_imagem)
     } catch (error) {
-        fs.renameSync(path_imagem, path.resolve("js", ".database", "reddit_tempfiles", path_imagem.split(path.sep).pop()))
         return null
     }
-    
-    if( ! iqdb_best || post.possuiTagsInvalidas(iqdb_best)){
-        fs.renameSync(path_imagem, path.resolve("js", ".database", "reddit_tempfiles", path_imagem.split(path.sep).pop()))
+    if( ! iqdb_best){
+        return null
+    }
+
+    if(iqdb_best.statusCode === 403){
+        return null
+    }
+
+    if(iqdb_best.statusCode === 404){
+        try {
+            fs.renameSync(path_imagem, path.resolve("js", ".database", "reddit_tempfiles", path_imagem.split(path.sep).pop()))    
+        } catch (error) {}
+        return null
+    }
+
+    if( post.possuiTagsInvalidas(iqdb_best)){
+        try {
+            fs.renameSync(path_imagem, path.resolve("js", ".database", "reddit_tempfiles", path_imagem.split(path.sep).pop()))    
+        } catch (error) {}
         return null
     }
 
     url_original = post.getOriginalURLIfExist("jpg", iqdb_best)
+    if(url_original == "jpg"){
+        fs.renameSync(path_imagem, path.resolve("js", ".database", "reddit_tempfiles", path_imagem.split(path.sep).pop()))
+        return null
+    }
+
     fileBuffer = await post.getBufferImage(url_original)
     if( ! fileBuffer){
         let extensao_ = post.getExtension(url_original)
@@ -248,11 +300,8 @@ async function adcionarSQLBDByFile(path_imagem){
         fileBuffer = await post.getBufferImage(url_original)
     }
 
-    if( fileBuffer){
-        //fs.writeFileSync(path_imagem, fileBuffer)
-
+    if( fileBuffer && iqdb_best){
         dimensions = getDimensionFromBuffer(fileBuffer)
-
         imagens.push({
             url: `'${ post.replaceAll(url_original, "'", "\\'")}'`,
             hashsum: post.getHashSumFromBuffer(fileBuffer),    
@@ -260,12 +309,15 @@ async function adcionarSQLBDByFile(path_imagem){
             width: dimensions.width
         })
 
-        result = iqdb_best.results[0]
-        if( result.thumbnail && result.thumbnail.tags && result.thumbnail.tags.length > 0){
-            for(const tag of result.thumbnail.tags){
-                tags.push(`'${ post.replaceAll(tag, "'", "\\'")}'`)
+        if(iqdb_best.results ){
+            result = iqdb_best.results[0]
+            if( result.thumbnail && result.thumbnail.tags && result.thumbnail.tags.length > 0){
+                for(const tag of result.thumbnail.tags){
+                    tags.push(`'${ post.replaceAll(tag, "'", "\\'")}'`)
+                }
             }
         }
+        
 
     }
     return {
@@ -273,4 +325,26 @@ async function adcionarSQLBDByFile(path_imagem){
         tags: tags
     }
 }
+
+async function getIqdbResult(filepath){
+    let retorno = null;
+    await new Promise(function (resolve, reject) {
+        request.get(`http://localhost:6969/iqdb?file=${filepath}`, {headers:{"cookie": process.env.REDDIT_COOKIE, "User-Agent": "PostmanRuntime/7.32.2"} }, function( error, response, body){
+            let retorno = null
+            try {
+                retorno = JSON.parse(Buffer.from(body).toString());
+            } catch (error) {
+                
+            }    
+            if( response && response.statusCode != 200){
+                retorno = { statusCode: response.statusCode}
+            }
+            resolve(retorno)    
+        });
+    }).then((data => {
+        retorno = data
+    }));
+    return retorno
+}
+
 main()

@@ -13,7 +13,7 @@ function mysqlQuery(sql){
             }
             
             if (err){
-                console.log("Error: ", err);
+                //console.log("Error: ", err);
                 resolve( null);
                 //reject()
                 //throw err;
@@ -37,8 +37,8 @@ function mysqlInsertQuery(sql){
         connection.query(sql, function(err, rows, fields) {
             
             if (err){
-                console.log("err", err, sql);
-                console.log("Rollback ");
+                //console.log("err", err, sql);
+                //console.log("Rollback ");
                 connection.rollback()
                 connection.end()
                 resolve( null);

@@ -73,6 +73,42 @@ app.post('/tag', (req, res) => {
 app.get('/tag-urls', async (req, res) => {
   res.send( await Reddit.buscarTodasUrlsTagIQDB(req.query.tag) )
 })
+
+app.get('/imagens', async (req, res) => {
+  res.send( await Reddit.buscarTodasImagensBD(req) )
+})
+app.get('/imagens/:page', async (req, res) => {
+  res.send( await Reddit.buscarTodasImagensBD(req) )
+})
+
+app.get('/imagem/:idimagem', async (req, res) => {
+  res.send( await Reddit.buscarDadosImagemBD(req) )
+})
+
+app.get('/bd-tags/:page', async (req, res) => {
+  res.send( await Reddit.buscarTodasTagsBD(req) )
+})
+
+app.get('/bd-tags/imagens/:idtag/:page', async (req, res) => {
+  res.send( await Reddit.buscarDadosTagBD(req) )
+})
+
+app.get('/reddit/:page', async (req, res) => {
+  res.send( await Reddit.buscarTodosRedditBD(req) )
+})
+/*
+app.get('/posts/imagens/:idreddit/:page', async (req, res) => {
+  res.send( await Reddit.buscarDadosTagBD(req) )
+})*/
+
+app.get('/reddit/posts/:subreddit/:page', async (req, res) => {
+  res.send( await Reddit.buscarTodosPostsRedditBD(req) )
+})
+
+app.get('/posts/:page', async (req, res) => {
+  res.send( await Reddit.buscarTodosPostsRedditBD(req) )
+})
+
 app.post('/post_reddit', (req, res) => {
   const json = req.body
   DatabaseReddit.savePostReddit(json)
