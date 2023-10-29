@@ -12,9 +12,10 @@
               Banco de dados
             </a>
             <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
-              <li><a class="dropdown-item" href="/bd/imagens">Imagens</a></li>
-              <li><a class="dropdown-item" href="/bd/bd-tags">Tags</a></li>
-              <li><a class="dropdown-item" href="/bd/resolucoes">Resoluções</a></li>
+              <li><a class="dropdown-item" href="/bd/imagens/1">Imagens</a></li>
+              <li><a class="dropdown-item" href="/bd/bd-tags/1">Tags</a></li>
+              <li><a class="dropdown-item" href="/bd/resolucoes/1">Wallpapers - PC</a></li>
+              <li><a class="dropdown-item" href="/bd/upload">Upload</a></li>
             </ul>
           </li>
           
@@ -38,6 +39,12 @@
           </li>
           
         </ul>
+        
+        <form class="d-flex" action="/bd/upload" method="post">
+          <input class="form-control me-2" type="text" placeholder="Url" id="url" name="url">
+          <button class="btn btn-outline-success btn-FE4278" type="submit">Search</button>
+        </form>
+
       </div>
     </div>
   </nav>

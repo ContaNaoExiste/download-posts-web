@@ -2,9 +2,14 @@
 @import url("https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.0.1/css/bootstrap.min.css");
 
 :root {
-    --main-bg-color: #0A1725;
-    --main-text-color: #C1D3D3;
-    --main-border-color: #C1D3D3;
+    --yd-palete-0A1725: #0A1725;
+    --yd-palete-FE4278: rgba(254, 66, 120, .90);
+    --yd-palete-00FFFF: rgba(0, 255, 255, .90);
+    --yd-palete-C1D3D3: #C1D3D3;
+    --yd-palete-FFFFFF: #FFFFFF;
+    --main-bg-color: var(--yd-palete-0A1725);
+    --main-text-color: var(--yd-palete-C1D3D3);
+    --main-border-color:var(--yd-palete-C1D3D3);
     --main-font-family: 'Gotham';
 }
 
@@ -113,40 +118,8 @@ body {
     border: 1px solid var(--main-border-color);
 }
 
-#div_imagens>div {
-    display: flex;
-}
-
-#div_imagens>div {
-    display: grid;
-    border-style: solid;
-    border-color: #C1D3d3;
-    padding: 5px;
-    margin: 2px;
-    border-radius: 5px;
-    width: 20%;
-}
-
-#div_imagens * img {
-    max-height: 10rem;
-    max-width: 10rem;
-}
-
-.div-image {
-    margin: auto;
-    /*width: 50%;*/
-}
-
 .title {
     font-weight: bold;
-}
-
-#div_imagens a{
-    width: 100%;
-    display: block;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    overflow: hidden;
 }
 
 body{
@@ -156,4 +129,57 @@ body{
 
 .break-word{
   overflow-wrap: break-word;
-}   
+}
+
+.btn-FE4278 {
+  color: var(--yd-palete-FFFFFF);
+  background-color: var(--yd-palete-FE4278);
+  border-color: var(--yd-palete-FE4278);
+}
+
+.btn-0A1725 {
+  color: var(--yd-palete-FFFFFF);
+  background-color: var(--yd-palete-0A1725);
+  border-color: var(--yd-palete-0A1725);
+}
+
+.btn-C1D3D3 {
+  color: var(--yd-palete-0A1725);
+  background-color: var(--yd-palete-C1D3D3);
+  border-color: var(--yd-palete-C1D3D3);
+}
+
+.btn-00FFFF {
+  color: var(--yd-palete-0A1725);
+  background-color: var(--yd-palete-00FFFF);
+  border-color: var(--yd-palete-00FFFF);
+}
+
+.bg-0A1725 {
+  background-color: var(--yd-palete-0A1725);
+  border-color: var(--yd-palete-0A1725);
+}
+
+.accordion-FE4278 .accordion-item{
+  background-color: transparent;
+  border: 1px solid var(--yd-palete-FE4278);
+}
+
+.accordion-FE4278 .accordion-button{
+  color: var(--yd-palete-FFFFFF);
+  background-color: var(--yd-palete-FE4278);
+}
+.accordion-FE4278 .accordion-button:not(.collapsed){
+  color: var(--yd-palete-FFFFFF);
+  background-color: var(--yd-palete-FE4278);
+}
+
+.accordion-FE4278 .accordion-button:focus{
+  /*rgba(var(--color), 0.8)*/
+  box-shadow: none;
+  border-color: transparent;
+}
+
+.img-thumbnail-mini{
+  height: 40px;
+}

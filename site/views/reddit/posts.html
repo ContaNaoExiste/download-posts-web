@@ -24,25 +24,7 @@
     
     {{@includeFile('../page-navigation.html', it) /}}
     
-    <div div class="grid" id="div_imagens">
-        {{@each(it.reddit.post) => figurinha}}
-        <div class='grid-item'>
-            <span>
-                <a href="https://www.reddit.com/r/{{figurinha.subreddit}}" target="_blank">{{figurinha.subreddit}}</a>
-            </span>
-            <span>
-                <a href="https://www.reddit.com/r/{{figurinha.subreddit}}/comments/{{figurinha.name.substr(3)}}" target="_blank">{{figurinha.name}}</a>
-            </span>
-            <span>{{figurinha.files}} Fotos</span>
-            <div class='div-image'>
-                <img class="image" src="{{figurinha.url}}" alt="{{figurinha.name}}" srcset="" loading="lazy"/>
-                <label class="d-none">{{figurinha.post_url}}</label>
-                
-                <a href="/bd/imagem/{{figurinha.idimagem}}"> Detalhes</a>
-            </div>
-        </div>
-        {{/each}}
-    </div>
+    {{@includeFile('../commun/list-imagem.html', {imagens: it.reddit.post}) /}}
 
     {{@includeFile('../page-navigation.html', it) /}}
     

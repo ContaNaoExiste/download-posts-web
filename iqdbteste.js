@@ -5,11 +5,19 @@ const fs = require('fs');
 const path = require("path");
 const crypto = require("crypto");
 var cmd=require('node-cmd');
+const { default: axios } = require("axios")
 
 async function main(){
     
-    const result = await IQDB.search_iqdb("https://cdn.donmai.us/original/45/98/459883e20179f96241130e071c6156c5.png")
-    console.log(JSON.stringify(result));
+
+    let request = axios.get("https://konachan.com/post/show/348094")
+    let data = (await request).data
+    let json = data.split(`<script type="text/javascript"> Post.register_resp(`)[1].split(`); </script>`)[0]
+    json = JSON.parse(json)
+    console.log(json);
+    
+    /*const result = await IQDB.search_iqdb("https://i.redd.it/x2qkpxhl5j8b1.jpg")
+    console.log(JSON.stringify(result));*/
     /*let filepath = path.resolve("js", ".database", "reddit_tempfiles", "3_1539037339938435073.jpg")
     let filebuffer = fs.readFileSync(filepath)
     //console.log(filebuffer, filepath);

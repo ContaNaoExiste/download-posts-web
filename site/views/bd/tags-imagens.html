@@ -13,7 +13,7 @@
 
     <div class="card">
       <div class="card-body">
-        <h5 class="card-title">TAG <u>{{it.imagens.descricao}}</u></h5>
+        <h5 class="card-title">TAG <u>{{it.imagens.tag.descricao}}</u></h5>
         <h6 class="card-subtitle mb-2 text-muted">{{it.imagens.total}} imagens</h6>
       </div>
     </div>
@@ -24,20 +24,7 @@
     
     {{@includeFile('../page-navigation.html', it) /}}
     
-    <div div class="grid" id="div_imagens">
-        {{@each(it.imagens.imagens) => figurinha}}
-        <div class='grid-item'>
-            
-            <a href="{{figurinha.url}}" target="_blank"> {{figurinha.name}}</a>
-            <div class='div-image'>
-                <img class="image" src="{{figurinha.crop}}" alt="{{figurinha.name}}" srcset="" loading="lazy"/>
-                <label class="d-none">{{figurinha.url}}</label>
-                
-                <a href="/bd/imagem/{{figurinha.idimagem}}"> Detalhes</a>
-            </div>
-        </div>
-        {{/each}}
-    </div>
+    {{@includeFile('../commun/list-imagem.html', {imagens: it.imagens.imagens}) /}}
 
     {{@includeFile('../page-navigation.html', it) /}}
     

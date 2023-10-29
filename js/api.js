@@ -114,15 +114,30 @@ app.post('/post_reddit', (req, res) => {
   DatabaseReddit.savePostReddit(json)
   res.send( {"o":"0"} )
 })
+
+app.get('/source/:idimagem', async(req, res) => {
+  const idimagem = req.params.idimagem
+  res.send( await Reddit.consultarImagemFromBD(idimagem))
+})
+
+app.get('/bd-resolucoes/:page', async(req, res) => {
+  res.send( await Reddit.buscarTodasImagensBD(req))
+})
+
+app.post('/upload', async(req, res) => {
+  res.send( await Reddit.consultarImagemFromURL(req.body))
+})
+
+
 /*** TAGS **/
 
 //The 404 Route (ALWAYS Keep this as the last route)
 app.get('*', function(req, res){
-  res.send({"message": "Endpoint não encontrado!", "code": 502})
+  res.status(404).send({"message": "Endpoint não encontrado!", "code": 502})
 });
 
 app.post('*', function(req, res){
-  res.send({"message": "Endpoint não encontrado!", "code": 502})
+  res.status(404).send({"message": "Endpoint não encontrado!", "code": 502})
 });
 
 app.listen(port, () => {

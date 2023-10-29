@@ -1,0 +1,7 @@
+<div div class="grid row" id="div_imagens">
+    {{@each(it.imagens) => imagem}}
+        {{@includeFile('../commun/list-item-imagem.html', imagem) /}}
+    {{/each}}
+</div>
+
+<script type="text/javascript" src="/js/list-imagem.js"></script>

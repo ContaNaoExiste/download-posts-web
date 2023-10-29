@@ -12,17 +12,14 @@
                 </a>
             </li>
         {{/if}}
-      
-
         {{@each(it.pagination) => page}}
             {{@if( ((page >= (parseInt(it.page) - 3)) && (page <= (parseInt(it.page) + 3))))}}
                 {{@if(it.page == page)}}
-                <li class="page-item active" aria-current="page"><span class="page-link">{{page}}</span></li>
+                    <li class="page-item active" aria-current="page"><span class="page-link">{{page}}</span></li>
                 {{#else}}
                     <li class="page-item"><a class="page-link" href="{{it.baseurl}}{{page}}{{it.hrefquery}}">{{page}}</a></li>
                 {{/if}}
             {{/if}}
-            
         {{/each}}
         {{@if(it.page != it.pagination.length)}}
             <li class="page-item">
@@ -30,13 +27,11 @@
                     <span aria-hidden="true">&raquo;</span>
                 </a>
             </li>
-
             <li class="page-item">
                 <a class="page-link" href="{{it.baseurl}}{{it.pagination.length}}{{it.hrefquery}}" aria-label="Última">
                     Última
                 </a>
             </li>
         {{/if}}
-      
     </ul>
 </nav>

@@ -12,77 +12,87 @@
 <body> 
     {{@includeFile('../header.html', it) /}}
 
-    <div>
-        <h1 class="title">Lista de Tags Disponíveis</h1>
-    </div>
-    <div>
-        <div class="row">
+    <div class="row">
+        {{@if(it.imagem.tags)}}
             <div class="col-sm-2">
-                <div class="accordion accordion-flush" id="accordionFlushExample">
+                <div class="accordion accordion-FE4278" id="accordionExample{{it.idimagem}}">
                     <div class="accordion-item">
-                      <h2 class="accordion-header">
-                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseOne" aria-expanded="false" aria-controls="flush-collapseOne">
-                          Tags
+                        <h2 class="accordion-header" id="headingOne">
+                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne{{it.idimagem}}" aria-expanded="true" aria-controls="collapseOne{{it.idimagem}}">
+                        Tags 
                         </button>
-                      </h2>
-                      <div id="flush-collapseOne" class="accordion-collapse collapse show" data-bs-parent="#accordionFlushExample">
-                        <div class="accordion-body">
-                            <ul class="list-group">
-                                {{@each(it.imagem.tags) => figurinha}}
-                                <li class="list-group-item">
-                                    <div class='grid-item'>
-                                    
-                                        <div class='div-image'>
-                                            <a class="break-word" href="/bd/bd-tag/imagens/{{figurinha.idtag}}">{{figurinha.descricao}}</a>
-                                        </div>
-                                    </div>
-                                </li>
-                                
-                                {{/each}}
-                        
-                            </ul>
+                        </h2>
+                        <div id="collapseOne{{it.idimagem}}" class="accordion-collapse collapse show bg-0A1725" aria-labelledby="headingOne" data-bs-parent="#accordionExample{{it.idimagem}}">
+                        <div class="accordion-body ">
+                            {{@each(it.imagem.tags) => tag}}
+                                <a class="badge bg-dark break-word" href="/bd/bd-tag/imagens/{{tag.idtag}}">
+                                    {{tag.descricao}}
+                                </a>
+                            {{/each}}
                         </div>
-                      </div>
+                        </div>
                     </div>
-                </div>        
+                </div>
             </div>
+        {{/if}}
 
-            <div class="col-sm-8">
-                ​<picture>
-                    <img src="{{it.imagem.url}}" class="image img-fluid" alt="{{it.imagem.name}}" width="{{it.imagem.width}}" height="{{it.imagem.height}}" >
-                </picture>
-            </div>
-            <div class="col-sm-2">
-                <div class="accordion accordion-flush" id="accordionReddit">
-                    <div class="accordion-item">
-                      <h2 class="accordion-header">
-                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseReddit" aria-expanded="false" aria-controls="flush-collapseReddit">
-                          Reddit Posts
-                        </button>
-                      </h2>
-                      <div id="flush-collapseReddit" class="accordion-collapse collapse show" data-bs-parent="#accordionReddit">
-                        <div class="accordion-body">
-                            <ul class="list-group">
-                                {{@each(it.imagem.reddit) => figurinha}}
-                                <li class="list-group-item">
-                                    <div>
-                                        <span>
-                                            <a href="https://www.reddit.com/r/{{figurinha.subreddit}}" target="_blank">{{figurinha.subreddit}}</a>
-                                        </span>
-                                        <span>
-                                            <a href="https://www.reddit.com/r/{{figurinha.subreddit}}/comments/{{figurinha.name.substr(3)}}" target="_blank">{{figurinha.name}}</a>
-                                        </span>
-                                        <span>{{figurinha.files}} Fotos</span>
-                                    </div>
-                                </li>
-                                
-                                {{/each}}
-                        
-                            </ul>
+        <div class="col-sm-8">
+            <div class="row">
+                <div class="col-sm-6 ">
+                    <a href="{{it.imagem.url}}" target="_blank" class="btn btn-00FFFF"> {{ new URL(it.imagem.url).host}} <span class="badge bg-dark">{{it.imagem.width}} X {{it.imagem.height}}</span></a>
+                    <a href="{{it.imagem.post}}" target="_blank" class="btn btn-00FFFF">{{it.imagem.post}}</a>
+                </div>
+                <div class="col-sm-6">
+                    <button class='btn btn-danger btn-sm btn-consultar-post' data-href="/bd/source/{{it.imagem.idimagem}}" data-imagem="{{JSON.stringify(it.imagem)}}">Consultar Post</button>
+                </div>
+            </div>    
+
+            <div class="row" >
+                <div class="col-sm-12">
+                    {{@if( it.imagem.video_url )}}
+                        <div class="embed-responsive embed-responsive-16by9">
+                            <iframe class="embed-responsive-item" src="{{it.imagem.video_url}}"  width="{{it.imagem.width}}" height="{{it.imagem.height}}" allowfullscreen ></iframe>
                         </div>
-                      </div>
+                    {{#else}}
+                        ​<picture>
+                            <img src="{{it.imagem.url}}" class="image img-fluid" alt="{{it.imagem.name}}" width="{{it.imagem.width}}" height="{{it.imagem.height}}" >
+                        </picture>
+                    {{/if}}
+
+                    
+                    
+                </div>
+            </div>
+            <br>
+           
+            
+            
+        </div>
+
+        <div class="col-sm-2">
+            <div class="accordion accordion-FE4278" id="accordionExampleReddit">
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingOneReddit">
+                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOneReddit" aria-expanded="true" aria-controls="collapseOneReddit">
+                    Reddits
+                    </button>
+                    </h2>
+                    <div id="collapseOneReddit" class="accordion-collapse collapse show bg-0A1725" aria-labelledby="headingOneReddit" data-bs-parent="#accordionExampleReddit">
+                    <div class="accordion-body ">
+                        {{@each(it.imagem.reddit) => reddit}}
+                            <div class="card bg-dark mb-2">
+                                <div class="card-body break-word d-grid gap-2">
+                                    <span class="badge bg-dark break-word">
+                                        {{reddit.files}} Fotos
+                                    </span>
+                                    <a href="https://www.reddit.com/r/{{reddit.subreddit}}" class="btn btn-00FFFF" target="_blank">r/{{reddit.subreddit}}</a>
+                                    <a href="https://www.reddit.com/r/{{reddit.subreddit}}/comments/{{reddit.name.substr(3)}}" class="btn btn-00FFFF" target="_blank">{{reddit.name}}</a>
+                                </div>
+                          </div>
+                        {{/each}}
                     </div>
-                </div>        
+                    </div>
+                </div>
             </div>
         </div>
     </div>

@@ -1,0 +1,70 @@
+<div class='grid-item col-sm-4'>
+    <div class="d-grid gap-2">
+        <a href="{{it.url}}" target="_blank" class="btn btn-00FFFF"> {{ new URL(it.url).host}} <span class="badge bg-dark">{{it.width}} X {{it.height}}</span></a>
+    </div>
+    <div class="row">
+            {{@if(it.post)}}
+                <div class="col-sm-6 d-grid gap-2">
+                    <a class='btn btn-FE4278 btn-sm' target="_blank" href="{{it.post}}">Post Original</a>
+                </div>
+            {{#else}}
+                <div class="col-sm-6 d-grid gap-2">
+                    <button class='btn btn-danger btn-sm btn-consultar-post' data-href="/bd/source/{{it.idimagem}}" data-imagem="{{JSON.stringify(it)}}">Consultar Post</button>
+                </div>
+            {{/if}}
+        <div class="col-sm-6 d-grid gap-2">
+            <a class='btn btn-FE4278 btn-sm' href="/bd/imagem/{{it.idimagem}}">Detalhes</a>
+        </div>
+    </div>
+    {{@if(it.idreddit_post)}}
+    <div class="row">
+        <div class="col-sm-12 d-grid gap-2">
+            <a class='btn btn-FE4278 btn-sm' target="_blank" href="https://www.reddit.com/r/{{it.subreddit}}">
+                {{@if(it.community_icon)}}
+                    <img class="rounded img-thumbnail-mini" src="{{it.community_icon}}" loading="lazy"/> 
+                {{/if}}
+                r/{{it.subreddit}}</a>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-sm-12 d-grid gap-2">
+            <a class='btn btn-FE4278 btn-sm' target="_blank" href="https://www.reddit.com/r/{{it.subreddit}}/comments/{{it.post_name.substr(3)}}">{{it.post_name}}</a>
+        </div>
+    </div>
+    {{/if}}
+
+    {{@if(it.crop)}}
+    <div class='div-image'>
+        <img class="image" src="{{it.url}}" alt="{{it.name}}" srcset="{{it.crop}}" loading="lazy" data-url="{{it.crop}}"/>
+        <label class="d-none">{{it.url}}</label>
+    </div>
+    {{/if}}
+    {{@if(it.tag_descricao)}}
+    <div class="row">
+        <div class="col-sm-12">
+            <div class="accordion accordion-FE4278" id="accordionExample{{it.idimagem}}">
+                <div class="accordion-item">
+                  <h2 class="accordion-header" id="headingOne">
+                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne{{it.idimagem}}" aria-expanded="true" aria-controls="collapseOne{{it.idimagem}}">
+                    Tags 
+                    </button>
+                  </h2>
+                  <div id="collapseOne{{it.idimagem}}" class="accordion-collapse collapse bg-0A1725" aria-labelledby="headingOne" data-bs-parent="#accordionExample{{it.idimagem}}">
+                    <div class="accordion-body ">
+                        {{@each(JSON.parse(it.tag_descricao)) => tag}}
+                            <a class="badge bg-dark break-word" href="/bd/bd-tag/imagens/{{tag.idtag}}">
+                                {{tag.descricao}}
+                            </a>
+                        {{/each}}
+                    </div>
+                  </div>
+                </div>
+              </div>
+          
+        </div>
+        
+    </div>
+    {{/if}}
+
+    <script type="text/javascript" src="/js/list-item-imagem.js"></script>
+</div>

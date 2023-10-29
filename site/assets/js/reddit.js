@@ -30,7 +30,7 @@ $(document).ready(() => {
         $('.grid').masonry()
     })
 
-    pesquisarURLIcon()
+    //pesquisarURLIcon()
     
     /*.each(async (index, element) => {
         const data = $(element).data()

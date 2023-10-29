@@ -21,10 +21,10 @@ function init() {
                 "img-src": ["'self'", process.env.PCMR_DOMAIN ? new URL(process.env.PCMR_DOMAIN).host : "", "cdn.donmai.us", "files.yande.re", 
                 "img3.gelbooru.com", "konachan.com", "images.anime-pictures.net", "preview.redd.it", "api.redgifs.com", "thumbs44.redgifs.com", "i.redd.it", 
                 "external-preview.redd.it", "assets.yande.re", "files.catbox.moe", "i.imgur.com", "reddit.com", "styles.redditmedia.com", "b.thumbs.redditmedia.com", 
-                "a.thumbs.redditmedia.com"],
+                "a.thumbs.redditmedia.com", "cdn.anime-pictures.net", "v.sankakucomplex.com", "static.zerochan.net", "s1.zerochan.net", "s.sankakucomplex.com", "e-shuushuu.net"],
                 "upgrade-insecure-requests": process.env.ENVIRONMENT == "PRD" ? [] : null,
                 "media-src": ["'self'", process.env.PCMR_DOMAIN ? new URL(process.env.PCMR_DOMAIN).host : ""],
-                "frame-src": ["reddit.com"],
+                "frame-src": ["reddit.com", "cdn.donmai.us"],
                 "connect-src": ["'self'"]
             },
         },

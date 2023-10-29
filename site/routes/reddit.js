@@ -70,7 +70,12 @@ router.get("/posts/:page", async (req, res) => {
         const response = await axios.get(botUrl + "/posts/" + page, {params: {'input-search': input_search}})
 
         const reddit = response.data
+        for (const imagem of response.data.post) {
+            //if( ! imagem.crop){
 
+                console.log( "idimagem", imagem.idimagem, "url", imagem.url, "crop", imagem.crop);
+            //}
+        }
         const pagination = []
         const pages = ((reddit.total - reddit.total % 50) / 50) + 1
         for (let index = 0; index < pages; index++) {

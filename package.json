@@ -11,6 +11,7 @@
     "asynckit": "^0.4.0",
     "aws-sign2": "^0.7.0",
     "aws4": "^1.11.0",
+    "axios": "^1.5.0",
     "bcrypt": "^5.1.0",
     "bcrypt-pbkdf": "^1.0.2",
     "buffer-image-size": "^0.6.4",
@@ -70,6 +71,7 @@
     "request": "^2.88.2",
     "safe-buffer": "^5.2.1",
     "safer-buffer": "^2.1.2",
+    "sankaku-api": "^1.0.3",
     "sshpk": "^1.17.0",
     "tough-cookie": "^2.5.0",
     "tunnel-agent": "^0.6.0",
@@ -84,6 +86,8 @@
     "site": "(cd site && npm run dev)",
     "web": "(cd client && npm start)",
     "schedule": "node index_schedule.js > js/.database/console/log.log 2> js/.database/console/error.log",
+    "iqdb": "cd ./app/iqdb && npm run dev",
+    "database": "cd ./app/database && npm run dev",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

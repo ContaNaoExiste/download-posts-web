@@ -122,10 +122,22 @@ function comprimirERenomearImagem(path_imagem, path_imagem_out){
     )
 }
 
+
+const { default: axios } = require("axios")
+
  async function main(){
+    
+    let result = await mysqlQuery("select * from imagem where url like '%sankakucomplex%' where idimagem = 29952")
+    for(const item of result){
+        let post = item.post.split("/").pop()
+        let sankaku = await axios(`https://capi-v2.sankakucomplex.com/posts/keyset?limit=40&tags=id_range:${post}`)
+        let data = sankaku.data
+        mysqlQuery(`UPDATE imagem SET url = '${data.data[0].file_url}' WHERE idimagem = ${item.idimagem}`)
+        console.log(`UPDATE imagem SET url = '${data.data[0].file_url}' WHERE idimagem = ${item.idimagem}`);
+    }
     //post.removeFilesDuplicate()
 
-    path_reddit = path.resolve("js", ".database", "reddit_files")
+    //path_reddit = path.resolve("js", ".database", "reddit_files")
     //
     //
     //
@@ -141,10 +153,10 @@ function comprimirERenomearImagem(path_imagem, path_imagem_out){
     //
     //
 
-    processamento(path_reddit, true)
-    processamento(path_reddit, false, true)
-    processamento(path_reddit, true, true)
-    await processamento(path_reddit)
+    //processamento(path_reddit, true)
+    //processamento(path_reddit, false, true)
+    //processamento(path_reddit, true, true)
+    //await processamento(path_reddit)
 }
 
 function quebrarSQL(sql, path_imagem, imagem) {

@@ -38,4 +38,12 @@ $(document).ready(() => {
     $('.image').on("load", () => {
         $('.grid').masonry()
     })
+
+    $('.btn-consultar-post').on('click',function(event){
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        $.get( $(this).data("href"), $(this).data("imagem"), function( data ) {
+            location.reload();
+        });
+    });
 })

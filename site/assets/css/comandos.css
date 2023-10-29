@@ -24,9 +24,9 @@
     width: 20%;
 }
 
-#div_imagens * img {
-    max-height: 10rem;
-    max-width: 10rem;
+#div_imagens * .image {
+    max-height: 12rem;
+    max-width: 12rem;
 }
 
 .div-image {
@@ -38,14 +38,12 @@
     font-weight: bold;
 }
 
-#div_imagens a{
-    width: 100%;
-    display: block;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    overflow: hidden;
-}
 .card {
     background-color: var(--main-bg-color) !important;
     border: none !important;
+}
+
+.grid-item .row{
+    padding-top: 5px;
+    padding-bottom: 5px;
 }
