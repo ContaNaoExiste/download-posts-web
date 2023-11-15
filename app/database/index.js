@@ -2,7 +2,7 @@ require('dotenv/config');
 const express = require('express');
 const app = express();
 const cors = require('cors');
-const { processaJson } = require('./mysql');
+const { processaJson, adicionarImagemDatabase } = require('./mysql');
 
 app.use(cors())
 
@@ -20,6 +20,21 @@ app.get('/iqdb', async function(req, res){
     } catch (error) {
         console.log(error);
         res.status(404).send({})
+    }
+    
+});
+
+app.get('/add', async function(req, res){
+    try {
+        const result = await adicionarImagemDatabase(req.body)
+        if(result.code){
+            res.status(result.code).send(result)
+        }else{
+            res.status(200).send(result)
+        }    
+    } catch (error) {
+        console.log(error);
+        res.status(404).send({error: error.message})
     }
     
 });

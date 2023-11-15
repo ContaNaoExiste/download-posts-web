@@ -73,7 +73,7 @@ router.get("/posts/:page", async (req, res) => {
         for (const imagem of response.data.post) {
             //if( ! imagem.crop){
 
-                console.log( "idimagem", imagem.idimagem, "url", imagem.url, "crop", imagem.crop);
+                //console.log( "idimagem", imagem.idimagem, "url", imagem.url, "crop", imagem.crop);
             //}
         }
         const pagination = []

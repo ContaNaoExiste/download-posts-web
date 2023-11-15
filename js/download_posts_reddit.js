@@ -1619,7 +1619,7 @@ async function buscarTodasImagensBD(req){
         group by imagem.idimagem
     ) as result`
 
-    console.log(sql);
+    //console.log(sql);
     let data = {}
     try {
         const count = await mysqlQuery(sql_count)
