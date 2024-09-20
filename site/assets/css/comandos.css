@@ -11,27 +11,28 @@
 }
 
 #div_imagens>div {
-    display: flex;
+    /*display: flex;*/
 }
 
 #div_imagens>div {
-    display: grid;
+    /*display: grid;
     border-style: solid;
     border-color: #C1D3d3;
-    padding: 5px;
-    margin: 2px;
-    border-radius: 5px;
+    padding: 5px;*/
+    /*margin: 2px;*/
+    /*border-radius: 5px;
     width: 20%;
+    min-height: 479px;*/
 }
 
 #div_imagens * .image {
-    max-height: 12rem;
-    max-width: 12rem;
+    max-height: 20rem;
+    max-width: 20rem;
 }
 
 .div-image {
     margin: auto;
-    width: 50%;
+    /*width: 50%;*/
 }
 
 .title {

@@ -2,6 +2,7 @@ const Reddit  = require("./js/download_posts_reddit");
 const Jobs = require('./js/schedule');
 
 function main(params) {
+    
     console.log('Iniciou o serviço', (new Date().toLocaleDateString("pt-BR").split("/").join("-")));
 
     let data_now =  new Date();

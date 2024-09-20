@@ -31,9 +31,17 @@ function selectByUrlOrHashsumOrPostNotInIdimagem(imagem){
     OR hashsum = '${imagem.hashsum}'
     OR post = '${imagem.post}'
     )
-    AND idimagem <> ${imagem.idimagem}
+    AND idimagem <> '${imagem.idimagem}'
 `
 }
+
+function selectByUrlOrPost(imagem){
+    return `
+    SELECT imagem.* FROM ${this.tabela}
+    WHERE ( url = '${imagem.url}'  OR post = '${imagem.post}' )
+`
+}
+
 
 function select(imagem){
     return `
@@ -63,5 +71,6 @@ module.exports = {
     select,
     sqlRemoveImagemByIdimagem,
     sqlUpdateImagem,
-    selectByUrlOrHashsumOrPostNotInIdimagem
+    selectByUrlOrHashsumOrPostNotInIdimagem,
+    selectByUrlOrPost
 }

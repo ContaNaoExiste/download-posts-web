@@ -49,13 +49,18 @@
 
             <div class="row" >
                 <div class="col-sm-12">
-                    {{@if( it.imagem.video_url )}}
+                    {{@if( it.imagem.video_url || ((it.imagem.url).match(/\.(gif|mp4|webm)$/) != null) )}}
                         <div class="embed-responsive embed-responsive-16by9">
-                            <iframe class="embed-responsive-item" src="{{it.imagem.video_url}}"  width="{{it.imagem.width}}" height="{{it.imagem.height}}" allowfullscreen ></iframe>
+                            <iframe class="embed-responsive-item" src="{{it.imagem.url}}"  width="{{it.imagem.width}}" height="{{it.imagem.height}}" allowfullscreen referrerpolicy="no-referrer"></iframe>
                         </div>
                     {{#else}}
                         ​<picture>
-                            <img src="{{it.imagem.url}}" class="image img-fluid" alt="{{it.imagem.name}}" width="{{it.imagem.width}}" height="{{it.imagem.height}}" >
+                            
+                            {{@if( (new URL(it.imagem.url).host) == "cdn.donmai.us")}}
+                                <img src="{{it.imagem.url}}" class="image img-fluid" alt="{{it.imagem.name}}" width="{{it.imagem.width}}" height="{{it.imagem.height}}">
+                            {{#else}}
+                                <img src="{{it.imagem.url}}" class="image img-fluid" alt="{{it.imagem.name}}" width="{{it.imagem.width}}" height="{{it.imagem.height}}" referrerpolicy="no-referrer">
+                            {{/if}}
                         </picture>
                     {{/if}}
 

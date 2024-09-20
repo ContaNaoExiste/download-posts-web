@@ -1,7 +1,7 @@
 $(document).ready(() => {
     $('.grid').masonry({
         itemSelector: '.grid-item',
-        columnWidth: 200,
+        columnWidth: 0,
         percentPosition: true
     })
 

@@ -769,6 +769,8 @@ async function getBufferImageByURL(url_original){
         return null
 
     fileBuffer = await getBufferImage(url_original)
+
+    //console.log(url_original, " url_original ", fileBuffer);
     if( ! fileBuffer){
         let extensao_ = getExtension(url_original)
         url_original = replaceAll(url_original, "." + extensao_, (extensao_ === "png") ? ".jpg" : ".png") 
@@ -1457,7 +1459,7 @@ async function buscarTodasUrlsTagIQDB(tag){
        where imagem.height >= 1080
        and imagem.width >= 1920
        and imagem.width > imagem.height
-       and ((imagem.height / imagem.width) * 100) > 55
+       and ((imagem.height / imagem.width) * 100) > 53
        and ((imagem.height / imagem.width) * 100) < 60
        and tag.idtag in ( select idtag from tag where tag.descricao = '${tag}')
        order by imagem.idimagem desc`
@@ -1581,22 +1583,69 @@ async function buscarTodasImagensBD(req){
     if( input_filter)
         filter = ` ${input_filter} `
 
+
+    const tags_filter = req.query['tags-filter']
+    has_tags =  ''
+    if(tags_filter)
+    has_tags = ` and imagem.idimagem IN (
+        select idimagem
+        from consulta
+        where descricao IN (${tags_filter.split(',').map((tag => "'" + tag + "'"))})
+        group by idimagem
+        HAVING  COUNT(*) = ${tags_filter.split(',').length} 
+    )`
+
+    const ex_tags_filter  = req.query['ex-tags-filter']
+    not_has_tags =  ''
+    if(ex_tags_filter)
+    not_has_tags = ` and imagem.idimagem NOT IN (
+        select idimagem
+        from consulta
+        where descricao IN (${ex_tags_filter.split(',').map((tag => "'" + tag + "'"))})
+        group by idimagem
+        HAVING  COUNT(*) > 0 
+    )`
+
+    let sql_with = `   with consulta (idimagem, idtag, descricao) AS (
+        SELECT imagem_tag.idimagem, tag.idtag, tag.descricao from tag
+        inner join imagem_tag  on tag.idtag = imagem_tag.idtag
+        order by tag.descricao ASC
+    ) `
+
+    let reddit_group_by = ''
+    let reddit_fields = ''
+    if( req.query['reddit-post']){
+        sql_with = `   with consulta (idimagem, idtag, descricao, idreddit_post, subreddit, post_url, community_icon, post_name) AS (
+            SELECT imagem_tag.idimagem, tag.idtag, tag.descricao,
+             reddit_post.idreddit_post, reddit_post.subreddit, reddit_post.post_url, reddit_post.community_icon, reddit_post.name as 'post_name'
+            from reddit_post
+            inner join reddit_imagem  on reddit_imagem.idreddit_post = reddit_post.idreddit_post
+            inner join imagem_tag  on reddit_imagem.idimagem = imagem_tag.idimagem
+            inner join tag  on tag.idtag = imagem_tag.idtag
+            order by reddit_post.idreddit_post, tag.descricao ASC
+        )`
+
+        reddit_fields = `consulta.idreddit_post, consulta.subreddit, consulta.post_url, consulta.community_icon, consulta.post_name,`
+        reddit_group_by = `consulta.idreddit_post, `
+    }
+    const subreddit = req.query.subreddit
+    let filter_subreddit = ''
+    if( subreddit)
+        filter_subreddit = `AND consulta.subreddit = '${subreddit}'`
+
     let filter_resolucao = ''
     if(req.query['resolucao'] ){
         filter_resolucao =`
             AND imagem.height >= 1080
             and imagem.width >= 1920
             and imagem.width > imagem.height
-            and ((imagem.height / imagem.width) * 100) > 55
+            and ((imagem.height / imagem.width) * 100) > 53
             and ((imagem.height / imagem.width) * 100) < 60`
     }
     sql = `
-        with consulta (idimagem, idtag, descricao) AS (
-            SELECT imagem_tag.idimagem, tag.idtag, tag.descricao from tag
-            inner join imagem_tag  on tag.idtag = imagem_tag.idtag
-            order by tag.descricao ASC
-        )
-        select REGEXP_REPLACE(imagem.url, ' ', '%20') as 'url', imagem.hashsum as 'name', imagem.idimagem, imagem.width, imagem.height, imagem.post, imagem.remover,
+        ${sql_with}
+        select ${reddit_fields} REGEXP_REPLACE(imagem.url, ' ', '%20') as 'url', imagem.hashsum as 'name', imagem.idimagem, imagem.width, imagem.height, imagem.post, imagem.remover,
+        IF( (imagem.height >= 1080 and imagem.width >= 1920 and imagem.width > imagem.height and ((imagem.height / imagem.width) * 100) > 53 and ((imagem.height / imagem.width) * 100) < 60), TRUE, FALSE) AS is_wallpaper,
         IF(consulta.idtag IS NULL, NULL,  CONCAT( '[', GROUP_CONCAT(JSON_OBJECT('idtag', consulta.idtag, 'descricao', consulta.descricao)), ']')) as tag_descricao
         from imagem
         left join consulta on consulta.idimagem = imagem.idimagem
@@ -1604,11 +1653,16 @@ async function buscarTodasImagensBD(req){
         ${where}
         ${filter_tag}
         ${filter_resolucao}
+        ${filter_subreddit}
         ${filter}
-        group by imagem.idimagem`
+        ${has_tags}
+        ${not_has_tags}
+        group by ${reddit_group_by} imagem.idimagem`
     
     const limit = (req.params.page) ? ((req.params.page - 1) * 50) + ", 50 ": " 0, 50 " 
-    sql_count = `SELECT count(*) as total from (
+    sql_count = `
+    ${sql_with}
+    SELECT count(*) as total from (
         select imagem.idimagem
         from imagem
         where imagem.url <> 'undefined'
@@ -1616,15 +1670,16 @@ async function buscarTodasImagensBD(req){
         ${filter_tag}
         ${filter_resolucao}
         ${filter}
-        group by imagem.idimagem
+        ${has_tags}
+        ${not_has_tags}
+        group by ${reddit_group_by}  imagem.idimagem
     ) as result`
 
-    //console.log(sql);
     let data = {}
     try {
         const count = await mysqlQuery(sql_count)
         data = {
-            imagens: (await mysqlQuery(sql + ' order by imagem.idimagem desc limit ' + limit)).map((item => {item.crop = getCropUrlIfExist(item.url); return item})),
+            imagens: (await mysqlQuery(`${sql} order by imagem.idimagem desc limit ${limit}`)).map((item => {item.crop = getCropUrlIfExist(item.url); return item})),
             total: (count.length ? count[0].total : 0)
         }    
     } catch (error) {
@@ -1734,60 +1789,284 @@ async function buscarDadosTagBD(req){
 }
 
 async function buscarTodosPostsRedditBD(req){
-    try {
-        const subreddit = req.params.subreddit
-        let where = ''
-        if( subreddit)
-            where = `AND reddit_post.subreddit = '${subreddit}'`
+    const idtag = req.params['idtag']
+    let filter_tag = ''
+    if( idtag ){
+        filter_tag = `AND imagem.idimagem in (SELECT idimagem FROM imagem_tag WHERE idtag = '${idtag}')`
+    }
+    const input_search = req.query['input-search']
+    let where = ''
+    if( input_search)
+        where = `AND (imagem.url LIKE '%${input_search}%' OR imagem.post LIKE '%${input_search}%') `
 
-        sql = `
-        with consulta (idimagem, idtag, descricao) AS (
-            SELECT imagem_tag.idimagem, tag.idtag, tag.descricao from tag
-            inner join imagem_tag  on tag.idtag = imagem_tag.idtag
-        )
-        select reddit_post.idreddit_post, reddit_post.subreddit, reddit_post.post_url, reddit_post.community_icon, reddit_post.name as 'post_name', REGEXP_REPLACE(imagem.url, ' ', '%20') as 'url', imagem.hashsum as 'name', imagem.idimagem, imagem.width, imagem.height, imagem.post, imagem.remover,
-        IF(consulta.idtag IS NULL, NULL,  CONCAT( '[', GROUP_CONCAT(JSON_OBJECT('idtag', consulta.idtag, 'descricao', consulta.descricao)), ']')) as tag_descricao
-        from imagem
-        left join consulta on consulta.idimagem = imagem.idimagem
-        inner join reddit_imagem on reddit_imagem.idimagem = imagem.idimagem
-        inner join reddit_post on reddit_imagem.idreddit_post = reddit_post.idreddit_post 
-        where imagem.remover = 0
-        ${where}
-        group by reddit_imagem.idreddit_post, reddit_imagem.idimagem
-        `    
-    sql_count = `
-        SELECT count(*) as total from (
-        
-            select reddit_post.idreddit_post
-            from imagem
-            inner join reddit_imagem on reddit_imagem.idimagem = imagem.idimagem
-            inner join reddit_post on reddit_imagem.idreddit_post = reddit_post.idreddit_post
-            where imagem.remover = 0
-            ${where}
-            group by reddit_imagem.idreddit_post, reddit_imagem.idimagem
-            ) as result`
+    const input_filter = req.query['input-filter']
+    let filter = ''
+    if( input_filter)
+        filter = ` ${input_filter} `
+
+
+    const tags_filter = req.query['tags-filter']
+    has_tags =  ''
+    if(tags_filter)
+    has_tags = ` and imagem.idimagem IN (
+        select imagem_tag.idimagem
+        from tag
+        inner JOIN imagem_tag ON tag.idtag = imagem_tag.idtag
+        where descricao IN (${tags_filter.split(',').map((tag => "'" + tag + "'"))})
+        group by imagem_tag.idimagem
+        HAVING  COUNT(*) = ${tags_filter.split(',').length} 
+    )`
+
+    const ex_tags_filter  = req.query['ex-tags-filter']
+    not_has_tags =  ''
+    if(ex_tags_filter)
+    not_has_tags = `
+        and imagem.idimagem NOT IN (
+            select imagem_tag.idimagem
+            from tag
+            inner JOIN imagem_tag ON tag.idtag = imagem_tag.idtag
+            where descricao IN (${ex_tags_filter.split(',').map((tag => "'" + tag + "'"))})
+            group by imagem_tag.idimagem
+            HAVING  COUNT(*) > 0
+    )
+    `
+
+    const subreddit = req.query.subreddit
+    let filter_subreddit = ''
+    if( subreddit)
+        filter_subreddit = `AND consulta.subreddit = '${subreddit}'`
+
+    let filter_resolucao = ''
+    if(req.query['resolucao'] ){
+        filter_resolucao =`
+            AND imagem.height >= 1080
+            and imagem.width >= 1920
+            and imagem.width > imagem.height
+            and ((imagem.height / imagem.width) * 100) > 53
+            and ((imagem.height / imagem.width) * 100) < 60`
+    }
+    
+    sql = `
+    
+    SELECT 
+    reddit_imagem.idreddit_post,
+    reddit_imagem.idreddit_imagem,
+    imagem.idimagem,
+    REGEXP_REPLACE(imagem.url, ' ', '%20') AS 'url',
+    
+    REGEXP_REPLACE(imagem.url, ' ', '%20') AS 'crop',
+    reddit_post.subreddit,
+    reddit_post.post_url,
+    reddit_post.community_icon,
+    reddit_post.name AS 'post_name',
+
+    imagem.hashsum AS 'name',
+    imagem.width,
+    imagem.height,
+    imagem.post,
+    imagem.remover,
+    IF((imagem.height >= 1080
+            AND imagem.width >= 1920
+            AND imagem.width > imagem.height
+            AND ((imagem.height / imagem.width) * 100) > 53
+            AND ((imagem.height / imagem.width) * 100) < 60),
+        TRUE,
+        FALSE) AS is_wallpaper
+    FROM imagem
+    inner JOIN reddit_imagem ON reddit_imagem.idimagem = imagem.idimagem
+
+    inner JOIN reddit_post ON reddit_imagem.idreddit_post = reddit_post.idreddit_post
+
+    /*inner JOIN imagem_tag ON imagem.idimagem = imagem_tag.idimagem
+    inner JOIN tag ON tag.idtag = imagem_tag.idtag*/
+    where imagem.remover = 0 AND url <> 'undefined'
+    ${filter_resolucao}
+    /*${has_tags}
+    ${not_has_tags}*/
+    group by reddit_imagem.idreddit_imagem DESC
+        `
     
     const limit = (req.params.page) ? ((req.params.page - 1) * 50) + ", 50 ": " 0, 50 " 
-    const count = await mysqlQuery(sql_count)
-    let post = await mysqlQuery(sql + ' order by reddit_imagem.idreddit_post DESC, reddit_imagem.idimagem desc limit ' + limit) 
-    if( ! post) post = []
+    sql_count = `
+        SELECT count(*) as total from (
+            ${sql}
+        ) as result`
 
-    const data = {
-        post: post.map((item => {item.crop = getCropUrlIfExist(item.url); return item})),
-        /**post: await mysqlQuery(sql + ' limit ' + limit),*/
-        total: (count.length ? count[0].total : 0)
-    }
-    return data
+    let data = {}
+    try {
+        
+        //order by reddit_imagem.idreddit_post desc, imagem.idimagem ASC
+        
+
+        const response_imagens = (await mysqlQuery(`${sql} 
+        limit ${limit}`))/*?.map((item => {item = completarDadosImagem(item); return item}))*/;
+
+        /*console.log(`${sql} 
+        order by reddit_imagem.idreddit_post desc, imagem.idimagem ASC
+        limit ${limit}`);
+*/
+        const imagens = response_imagens
+        /*for (const imagem of response_imagens) {
+            reddit_ = await completarDadosImagem(imagem);
+            imagens.push({...imagem, ...reddit_})
+        }*/
+
+        //console.log(imagens);
+        const count = await mysqlQuery(sql_count)
+        data = {
+            imagens: imagens,
+            total: (count.length ? count[0].total : 0)
+        }    
     } catch (error) {
-        console.log(error);
-        return {
-            post: {},
-            tags: []
+        console.log( error);
+        data = {
+            imagens: [],
+            total: 0
         }    
     }
+    
+    return data
 }
 
+async function completarDadosImagem(imagem){
+    let dados_completos = {}
+    const sql = `
+        SELECT reddit_post.idreddit_post,
+        reddit_post.subreddit,
+        reddit_post.post_url,
+        reddit_post.community_icon,
+        reddit_post.name AS 'post_name' FROM reddit_post
+        WHERE idreddit_post = ${imagem.idreddit_post}
+    `
+    try {
+        const reddit = await mysqlQuery(sql)
+        dados_completos = reddit[0]
+    } catch (error) { }
+
+    dados_completos.crop = getCropUrlIfExist(imagem.url)
+
+    return dados_completos;
+}
 async function buscarTodosRedditBD(req){
+    const idtag = req.params['idtag']
+    let filter_tag = ''
+    if( idtag ){
+        filter_tag = `AND imagem.idimagem in (SELECT idimagem FROM imagem_tag WHERE idtag = '${idtag}')`
+    }
+    const input_search = req.query['input-search']
+    let where = ''
+    if( input_search)
+        where = `AND (imagem.url LIKE '%${input_search}%' OR imagem.post LIKE '%${input_search}%') `
+
+    const input_filter = req.query['input-filter']
+    let filter = ''
+    if( input_filter)
+        filter = ` ${input_filter} `
+
+
+    const tags_filter = req.query['tags-filter']
+    has_tags =  ''
+    if(tags_filter)
+    has_tags = ` and imagem.idimagem IN (
+        select idimagem
+        from consulta
+        where descricao IN (${tags_filter.split(',').map((tag => "'" + tag + "'"))})
+        group by idimagem
+        HAVING  COUNT(*) = ${tags_filter.split(',').length} 
+    )`
+
+    const ex_tags_filter  = req.query['ex-tags-filter']
+    not_has_tags =  ''
+    if(ex_tags_filter)
+    not_has_tags = ` and imagem.idimagem NOT IN (
+        select idimagem
+        from consulta
+        where descricao IN (${ex_tags_filter.split(',').map((tag => "'" + tag + "'"))})
+        group by idimagem
+        HAVING  COUNT(*) > 0 
+    )`
+
+    const subreddit = req.query.subreddit
+    let filter_subreddit = ''
+    if( subreddit)
+        filter_subreddit = `AND consulta.subreddit = '${subreddit}'`
+
+    let filter_resolucao = ''
+    if(req.query['resolucao'] ){
+        filter_resolucao =`
+            AND imagem.height >= 1080
+            and imagem.width >= 1920
+            and imagem.width > imagem.height
+            and ((imagem.height / imagem.width) * 100) > 53
+            and ((imagem.height / imagem.width) * 100) < 60`
+    }
+    sql = `
+    SELECT 
+	reddit_imagem.idreddit_imagem,
+    imagem.idimagem,
+REGEXP_REPLACE(imagem.url, ' ', '%20') AS 'url',
+    imagem.hashsum AS 'name',
+    imagem.width,
+    imagem.height,
+    imagem.post,
+    imagem.remover,
+    IF((imagem.height >= 1080
+            AND imagem.width >= 1920
+            AND imagem.width > imagem.height
+            AND ((imagem.height / imagem.width) * 100) > 53
+            AND ((imagem.height / imagem.width) * 100) < 60),
+        TRUE,
+        FALSE) AS is_wallpaper,
+        IF(tag.idtag IS NULL,
+        NULL,
+        CONCAT('[',
+                GROUP_CONCAT(JSON_OBJECT('idtag',
+                            tag.idtag,
+                            'descricao',
+                            tag.descricao)),
+                ']')) AS tag_descricao
+FROM imagem
+inner JOIN reddit_imagem ON reddit_imagem.idimagem = imagem.idimagem
+inner JOIN imagem_tag ON imagem.idimagem = imagem_tag.idimagem
+inner JOIN tag ON tag.idtag = imagem_tag.idtag
+
+ where imagem.remover = 0 AND url <> 'undefined'
+
+
+        ${where}
+        ${filter_tag}
+        ${filter_resolucao}
+        ${filter_subreddit}
+        ${filter}
+        ${has_tags}
+        ${not_has_tags}
+
+
+        group by reddit_imagem.idreddit_post, imagem.idimagem`
+    
+    const limit = (req.params.page) ? ((req.params.page - 1) * 50) + ", 50 ": " 0, 50 " 
+    sql_count = `
+        SELECT count(*) as total from (
+            ${sql}
+        ) as result`
+
+    let data = {}
+    console.log(`${sql} order by imagem.idimagem desc limit ${limit}`);
+    try {
+        const count = await mysqlQuery(sql_count)
+        data = {
+            imagens: (await mysqlQuery(`${sql} order by imagem.idimagem desc limit ${limit}`)).map((item => {item.crop = getCropUrlIfExist(item.url); return item})),
+            total: (count.length ? count[0].total : 0)
+        }    
+    } catch (error) {
+        data = {
+            imagens: [],
+            total: 0
+        }    
+    }
+    
+    return data
+
     try {
         const input_search = req.query['input-search']
         let where = ''
@@ -1818,16 +2097,25 @@ async function buscarTodosRedditBD(req){
     }
 }
 
+function isURLVideoOrGif(url){
+    return (url.match(/\.(mp4|gif|webm)$/)!= null); 
+}
+
+function isURLGif(url){
+    return (url.match(/\.(gif)$/)!= null); 
+}
+
 function getCropUrlIfExist(url){
-    if( ! url)
+    if( ! url || isURLGif(url))
         return url
+    
     try {
         if(url.startsWith("https://cdn.donmai.us/original")){
             url_split = url.split("/")
             hash = url_split.pop()
             let hash_1= hash.substring(0, 2)
             let hash_2= hash.substring(2, 4)
-            return `https://cdn.donmai.us/360x360/${hash_1}/${hash_2}/${hash.replace("png", "jpg").replace("jpeg", "jpg").replace("webp", "jpg")}`
+            return `https://cdn.donmai.us/360x360/${hash_1}/${hash_2}/${hash.replace("png", "jpg").replace("jpeg", "jpg").replace("webp", "jpg").replace("zip", "jpg").replace("mp4", "jpg").replace("gif", "jpg")}`
         }
             
         if(url.startsWith("https://files.yande.re/image/")){
@@ -1845,12 +2133,14 @@ function getCropUrlIfExist(url){
             return `https://konachan.com/data/preview/${hash_1}/${hash_2}/${hash}.jpg`
         }
 
-        if(url.startsWith("https://img3.gelbooru.com")){
+        if(url.startsWith("https://img3.gelbooru.com") || url.startsWith("https://video-cdn1.gelbooru.com")){
+           
+
             let url_split = url.split("/")
             let hash = new URL(url).pathname.split("/").pop()
             let hash_1= hash.substring(0, 2)
             let hash_2= hash.substring(2, 4)
-            return `https://img3.gelbooru.com/thumbnails/${hash_1}/${hash_2}/thumbnail_${hash.replace("png", "jpg").replace("jpeg", "jpg")}`
+            return `https://img3.gelbooru.com/thumbnails/${hash_1}/${hash_2}/thumbnail_${hash.replace("png", "jpg").replace("jpeg", "jpg").replace("zip", "jpg").replace("mp4", "jpg").replace("gif", "jpg")}`
         }
 
         if(url.startsWith("https://images.anime-pictures.net/")){
@@ -1865,6 +2155,11 @@ function getCropUrlIfExist(url){
             url = replaceAll(url, ".full.", ".600.")
             url = replaceAll(url, ".png", ".jpg")
             return url
+        }
+
+        if(url.startsWith("https://e-shuushuu.net")){
+            let name_file = new URL(url).pathname.split("/").pop().split('.').shift()
+            return `https://e-shuushuu.net/images/thumbs/${name_file}.jpeg`
         }
     } catch (error) {
         console.log(error, url);
@@ -1946,6 +2241,37 @@ async function consultarImagemFromURL(item){
        return null 
     }
 }
+
+async function consultarImagemRandom(){
+    sql = `  
+   
+SELECT imagem.* FROM imagem 
+
+where  imagem.idimagem IN (
+        select idimagem
+        from imagem_tag
+        inner JOIN tag ON tag.idtag = imagem_tag.idtag
+        where descricao IN ('SAFE')
+        group by idimagem
+        HAVING  COUNT(*) >= 1 
+)
+
+and  imagem.idimagem NOT IN (
+        select idimagem
+        from imagem_tag
+        inner JOIN tag ON tag.idtag = imagem_tag.idtag
+        where descricao IN ('animated', 'Sankaku Channel')
+        group by idimagem
+        HAVING  COUNT(*) > 0 
+)
+ORDER BY RAND() 
+limit 1 `
+    result = await mysqlQuery(sql)
+    const imagem = result[0]
+    imagem.crop = getCropUrlIfExist(imagem.url)
+    return  imagem
+
+}
 module.exports = {
     buscarPostsReddit,
     buscarLocalDatabaseReddits,
@@ -1975,5 +2301,6 @@ module.exports = {
     updateLogIQDBSearch,
     getImageUrlByURL,
     consultarImagemFromBD,
-    consultarImagemFromURL
+    consultarImagemFromURL,
+    consultarImagemRandom
 }

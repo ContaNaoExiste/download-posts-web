@@ -13,7 +13,7 @@ function mysqlQuery(sql){
             }
             
             if (err){
-                //console.log("Error: ", err);
+                console.log("Error: ", err);
                 resolve( null);
                 //reject()
                 //throw err;

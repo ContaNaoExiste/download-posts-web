@@ -134,7 +134,7 @@ body{
 .btn-FE4278 {
   color: var(--yd-palete-FFFFFF);
   background-color: var(--yd-palete-FE4278);
-  border-color: var(--yd-palete-FE4278);
+  border-color: var(--yd-palete-0A1725);
 }
 
 .btn-0A1725 {
@@ -182,4 +182,8 @@ body{
 
 .img-thumbnail-mini{
   height: 40px;
+}
+
+.bootstrap-tagsinput .tag{
+  color: #555 !important;
 }

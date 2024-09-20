@@ -129,6 +129,11 @@ app.post('/upload', async(req, res) => {
 })
 
 
+app.get('/random_image', async(req, res) => {
+  res.send( await Reddit.consultarImagemRandom(req))
+})
+
+
 /*** TAGS **/
 
 //The 404 Route (ALWAYS Keep this as the last route)

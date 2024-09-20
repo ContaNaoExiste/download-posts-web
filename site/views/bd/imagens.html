@@ -7,8 +7,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/png" href="{{it.APP_ICON}}">
     <link rel="stylesheet" type="text/css" href="/css/comandos.css">
+    
+  <link rel="stylesheet" href="//code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
 </head>
+<style>
 
+.bootstrap-tagsinput .tag{
+  color: #555 !important;
+}
+</style>
 <body>
     {{@includeFile('../header.html', it) /}}
     <div class="card">
@@ -20,9 +27,36 @@
 
     <div class="search">
         <form action="/bd/imagens/1">
-          <input class="form-control" type="text" placeholder="Search" id="input-search" name="input-search" value="{{it.input_search}}">
+          
+          <input class="form-control" type="text" placeholder="POST or URL Filter" id="input-search" name="input-search" value="{{it.input_search}}">
+
           <input class="form-control" type="text" placeholder="SQL Filter" id="input-filter" name="input-filter" value="{{it.input_filter}}">  
+
+          <div class="form-group">
+            <label for="input-tags-filter">Possui essas Tags</label>
+            <br>
+            <input  type="text" placeholder="Tags" id="tags-filter" name='tags-filter' value="" data-role="tagsinput" value="{{it.tags_filter}}">  
+            <input  type="text" placeholder="Pesquisar Tags" id="input-tags-filter" value="">  
+          </div>
+          
+          <br>
+          <div class="form-group">
+            <label for="ex-input-tags-filter">Excluir caso Possui essas Tags</label>
+            <br>
+            <input  type="text" placeholder="Tags" id="ex-tags-filter" name='ex-tags-filter' value="" data-role="tagsinput" value="{{it.ex_tags_filter}}">  
+            <input  type="text" placeholder="Pesquisar Tags" id="ex-input-tags-filter" value="">  
+          </div>
+
+          <br>
+          <div class="form-group">
+            <label for="resolucao">PC Wallpapers</label>
+            <input  type="checkbox" placeholder="PC Wallpapers" id="resolucao" name='resolucao' value="checked" {{it.resolucao}}/>
+          </div>
           <button type="submit" >Pesquisar</button>
+          
+
+          <button type="button" id="btn-abrir-imagens">Abrir Imagens</button>          
+
       </form>
     </div>
 
@@ -32,5 +66,97 @@
     
     {{@includeFile('../page-navigation.html', it) /}}
 
+    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
+
+    <link rel="stylesheet" href="/lib/select-picker-master/picker.min.css">
+    <script type="text/javascript" src="/lib/select-picker-master/picker.min.js"></script>
+    <link rel="stylesheet" href="/lib/bootstrap-tagsinput-latest/bootstrap-tagsinput.css">
+    <script type="text/javascript" src="/lib/bootstrap-tagsinput-latest/bootstrap-tagsinput.js"></script>
+
+
+    <script type="text/javascript">
+      $(document).ready(function(){
+        $('#tags-filter').tagsinput({
+          itemValue: 'id',
+          itemText: 'value',
+          trimValue: true,
+          freeInput: false
+        });
+
+        $('#tags-filter').tagsinput('add', '{{it.tags_filter}}');
+        $('#ex-tags-filter').tagsinput('add', '{{it.ex_tags_filter}}');
+        $( "#input-tags-filter" ).autocomplete({
+          source: function( request, response ) {
+
+            $.ajax( {
+              url: "/bd/tags.json",
+              dataType: "json",
+              data: {
+                'input-search': request.term
+              },
+              success: function( data ) {
+                console.log(data);
+                response( data.tags.map( (tag)=>{ return {id: tag.idtag, value: tag.tag}}) );
+              }
+            } );
+          },
+          minLength: 1,
+          select: function( event, ui ) {
+            
+            $('#tags-filter').tagsinput('add', ui.item.value);
+            $('#tags-filter').tagsinput('refresh');
+            console.log( "Selected: " + ui.item.value + " aka " + ui.item.id );
+          },
+          
+          close: function( event, ui ) {
+            $("#input-tags-filter").val("")
+          }
+        } );
+
+        $('#ex-tags-filter').tagsinput({
+          itemValue: 'id',
+          itemText: 'value',
+          trimValue: true,
+          freeInput: false
+        });
+
+        $( "#ex-input-tags-filter" ).autocomplete({
+          source: function( request, response ) {
+
+            $.ajax( {
+              url: "/bd/tags.json",
+              dataType: "json",
+              data: {
+                'input-search': request.term
+              },
+              success: function( data ) {
+                console.log(data);
+                response( data.tags.map( (tag)=>{ return {id: tag.idtag, value: tag.tag}}) );
+              }
+            } );
+          },
+          minLength: 1,
+          select: function( event, ui ) {
+            
+            $('#ex-tags-filter').tagsinput('add', ui.item.value);
+            $('#ex-tags-filter').tagsinput('refresh');
+            console.log( "Selected: " + ui.item.value + " aka " + ui.item.id );
+          },
+          
+          close: function( event, ui ) {
+            $("#ex-input-tags-filter").val("")
+          }
+        } );
+      });
+
+      $( "#btn-abrir-imagens" ).click((e)=> {
+        e.preventDefault();
+        for (const iterator of $("#div_imagens").find("[data-large-version]")) {
+          console.log($(iterator).data("large-version"));
+          window.open($(iterator).data("large-version"), "_blank", "noreferrer=true")
+        }
+        
+      })
+  </script>
 </body>
 </html>

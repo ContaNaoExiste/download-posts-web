@@ -2,7 +2,7 @@ require('dotenv/config');
 const express = require('express');
 const app = express();
 const cors = require('cors');
-const { processaJson, adicionarImagemDatabase } = require('./mysql');
+const { processaJson, adicionarImagemDatabase, pesquisarImagemDatabase, validateTags } = require('./mysql');
 
 app.use(cors())
 
@@ -38,6 +38,37 @@ app.get('/add', async function(req, res){
     }
     
 });
+
+app.get('/find', async function(req, res){
+    try {
+        const result = await pesquisarImagemDatabase(req.body)
+        if(result && result.code){
+            res.status(result.code).send(result)
+        }else{
+            res.status(200).send(result)
+        }    
+    } catch (error) {
+        console.log(error);
+        res.status(404).send({error: error.message})
+    }
+    
+});
+
+app.get('/validatetags', async function(req, res){
+    try {
+        const result = await validateTags(req.body)
+        if(result && result.code){
+            res.status(result.code).send(result)
+        }else{
+            res.status(200).send(result)
+        }    
+    } catch (error) {
+        console.log(error);
+        res.status(404).send({error: error.message})
+    }
+    
+});
+
 
 app.get('*', function(req, res){
     res.status(404).send({"error": "Endpoint não encontrado!", "code": 404})

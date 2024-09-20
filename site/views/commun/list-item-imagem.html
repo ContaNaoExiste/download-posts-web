@@ -1,70 +1,108 @@
-<div class='grid-item col-sm-4'>
-    <div class="d-grid gap-2">
-        <a href="{{it.url}}" target="_blank" class="btn btn-00FFFF"> {{ new URL(it.url).host}} <span class="badge bg-dark">{{it.width}} X {{it.height}}</span></a>
-    </div>
+<div class='grid-item col-sm-3'>
     <div class="row">
-            {{@if(it.post)}}
-                <div class="col-sm-6 d-grid gap-2">
-                    <a class='btn btn-FE4278 btn-sm' target="_blank" href="{{it.post}}">Post Original</a>
-                </div>
-            {{#else}}
-                <div class="col-sm-6 d-grid gap-2">
-                    <button class='btn btn-danger btn-sm btn-consultar-post' data-href="/bd/source/{{it.idimagem}}" data-imagem="{{JSON.stringify(it)}}">Consultar Post</button>
-                </div>
-            {{/if}}
-        <div class="col-sm-6 d-grid gap-2">
-            <a class='btn btn-FE4278 btn-sm' href="/bd/imagem/{{it.idimagem}}">Detalhes</a>
+        <div class="col-sm-6">
+            <a href="{{it.url}}" target="_blank" class="btn btn-00FFFF btn-sm d-grid gap-2" rel="noreferrer" data-large-version="{{it.url}}">Large Version</a>
         </div>
-    </div>
-    {{@if(it.idreddit_post)}}
-    <div class="row">
-        <div class="col-sm-12 d-grid gap-2">
-            <a class='btn btn-FE4278 btn-sm' target="_blank" href="https://www.reddit.com/r/{{it.subreddit}}">
-                {{@if(it.community_icon)}}
-                    <img class="rounded img-thumbnail-mini" src="{{it.community_icon}}" loading="lazy"/> 
-                {{/if}}
-                r/{{it.subreddit}}</a>
-        </div>
-    </div>
-    <div class="row">
-        <div class="col-sm-12 d-grid gap-2">
-            <a class='btn btn-FE4278 btn-sm' target="_blank" href="https://www.reddit.com/r/{{it.subreddit}}/comments/{{it.post_name.substr(3)}}">{{it.post_name}}</a>
-        </div>
-    </div>
-    {{/if}}
 
-    {{@if(it.crop)}}
-    <div class='div-image'>
-        <img class="image" src="{{it.url}}" alt="{{it.name}}" srcset="{{it.crop}}" loading="lazy" data-url="{{it.crop}}"/>
-        <label class="d-none">{{it.url}}</label>
+        <div class="col-sm-6">
+            <a class='btn btn-00FFFF btn-sm d-grid gap-2' target="_blank" href="{{it.post}}">Original Post</a>
+        </div>
     </div>
-    {{/if}}
-    {{@if(it.tag_descricao)}}
+
+    <div class="row">
+        {{@if( ! it.post)}}
+            <div class="col-sm-6">
+                <button class='btn btn-danger btn-consultar-post btn-sm d-grid gap-2' data-href="/bd/source/{{it.idimagem}}" data-imagem="{{JSON.stringify(it)}}">Consultar Post</button>
+            </div>    
+        {{/if}}
+        <div class="col-sm-6">
+            <a href="https://iqdb.org/?url={{it.crop}}" target="_blank" class="btn btn-FE4278 btn-sm d-grid gap-2" rel="noreferrer">IQDB</a>
+        </div>
+
+        <div class="col-sm-6">
+            <a class='btn btn-FE4278 btn-sm d-grid gap-2' target="_blank" href="/bd/imagem/{{it.idimagem}}">Detalhes</a>
+        </div>
+    </div>
+
     <div class="row">
         <div class="col-sm-12">
-            <div class="accordion accordion-FE4278" id="accordionExample{{it.idimagem}}">
-                <div class="accordion-item">
-                  <h2 class="accordion-header" id="headingOne">
-                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne{{it.idimagem}}" aria-expanded="true" aria-controls="collapseOne{{it.idimagem}}">
-                    Tags 
-                    </button>
-                  </h2>
-                  <div id="collapseOne{{it.idimagem}}" class="accordion-collapse collapse bg-0A1725" aria-labelledby="headingOne" data-bs-parent="#accordionExample{{it.idimagem}}">
-                    <div class="accordion-body ">
-                        {{@each(JSON.parse(it.tag_descricao)) => tag}}
-                            <a class="badge bg-dark break-word" href="/bd/bd-tag/imagens/{{tag.idtag}}">
-                                {{tag.descricao}}
-                            </a>
-                        {{/each}}
-                    </div>
-                  </div>
-                </div>
-              </div>
-          
-        </div>
-        
-    </div>
-    {{/if}}
+            <span class="badge bg-danger">{{ new URL(it.url).host}} </span>
 
+            <span class="badge bg-info">{{it.width}} X {{it.height}}</span>
+            {{@if(it.is_wallpaper)}}
+                    <span class="badge bg-primary">wallpaper</span>
+            {{/if}}
+        </div>
+    </div>
+    
+    <div class="row">
+        {{@if(it.idreddit_post)}}
+            <div class="col-sm-6">
+                <a class='btn btn-FE4278 btn-sm  d-grid gap-2' target="_blank" href="https://www.reddit.com/r/{{it.subreddit}}">
+                    {{@if(it.community_icon)}}
+                        <img class="rounded img-thumbnail-mini" src="{{it.community_icon}}" loading="lazy"/> 
+                    {{/if}}
+                    r/{{it.subreddit}}</a>
+            </div>
+            <div class="col-sm-6">
+                <a class='btn btn-FE4278 btn-sm  d-grid gap-2' target="_blank" href="https://www.reddit.com/r/{{it.subreddit}}/comments/{{it.post_name.substr(3)}}">{{it.post_name}}</a>
+            </div>
+        {{/if}}
+
+        <div class="col-sm-12">
+
+            {{@if( ( ( new URL(it.url).pathname ).match(/\.(mp4|webm|zip)$/) != null) )}}
+                <div class="embed-responsive embed-responsive-16by9">
+                    <video class="embed-responsive-item image" src="{{it.url}}" poster="{{it.crop}}"  width="{{it.width}}" height="{{it.height}}" controls  loop autoplay muted>
+                        <source src="{{it.url}}" type="video/{{( new URL(it.url).pathname.split('.').pop() )}}" referrerpolicy="no-referrer">
+
+                    </video>
+                </div>
+            {{#else}}
+
+                {{@if(it.crop)}}
+                
+                    <div class='div-image'>
+                        <a href="{{it.url}}" target="_blank" rel="noreferrer">
+                            {{@if( (new URL(it.url).host) == "cdn.donmai.us")}}
+                                <img class="image" src="{{it.url}}" alt="{{it.name}}" srcset="{{it.crop}}" loading="lazy" data-url="{{it.crop}}"/>
+                            {{#else}}
+                                <img class="image" src="{{it.url}}" alt="{{it.name}}" srcset="{{it.crop}}" loading="lazy" data-url="{{it.crop}}" referrerpolicy="no-referrer"/>
+                            {{/if}}
+                        </a>
+                        
+                        <label class="d-none">{{it.url}}</label>
+                    </div>
+                {{/if}}
+            {{/if}}
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-sm-12">
+
+            {{@if(it.tag_descricao)}}
+                <div class="accordion accordion-FE4278" id="accordionExample{{it.idimagem}}">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingOne">
+                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne{{it.idimagem}}" aria-expanded="true" aria-controls="collapseOne{{it.idimagem}}">
+                        Tags 
+                        </button>
+                        </h2>
+                        <div id="collapseOne{{it.idimagem}}" class="accordion-collapse collapse bg-0A1725" aria-labelledby="headingOne" data-bs-parent="#accordionExample{{it.idimagem}}">
+                        <div class="accordion-body ">
+                            {{@each(JSON.parse(it.tag_descricao)) => tag}}
+                                <a class="badge bg-dark break-word" href="/bd/bd-tag/imagens/{{tag.idtag}}">
+                                    {{tag.descricao}}
+                                </a>
+                            {{/each}}
+                        </div>
+                        </div>
+                    </div>
+                </div>
+            {{/if}}
+
+        </div>
+    </div>
+    
     <script type="text/javascript" src="/js/list-item-imagem.js"></script>
 </div>
